@@ -40,14 +40,14 @@ public class VRMovement : MonoBehaviour
         Vector3 moveDirection = forward * input.y + right * input.x;
 
         // 重力の処理（宙に浮かないようにする）
-        if (characterController.isGrounded)
+        /*if (characterController.isGrounded)
         {
             verticalVelocity = -0.5f; // 接地を安定させるための微小な下向きの力
         }
         else
         {
             verticalVelocity += gravity * Time.deltaTime;
-        }
+        }*/
 
         // 最終的な移動量を計算して適用
         Vector3 finalMovement = (moveDirection * speed) + (Vector3.up * verticalVelocity);
