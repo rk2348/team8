@@ -2,22 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
-using static AnimalIdentity;
 
-/// <summary>
-/// 捕食者(トラ・オオカミなど)の汎用AI。
-/// どの種族を「無視する/様子を見て追跡する/ゆっくり接近してから追跡する」かはInspectorで設定する。
-/// 同種の捕食者同士(トラ×オオカミなど)がケンカする設定も可能。
-/// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 public class PredatorAI : MonoBehaviour
 {
     public enum ReactionMode { Ignore, Engage }
+    private enum PredatorState { None, Watching, Stalking, Chasing }
 
     [System.Serializable]
     public class PreyReaction
     {
-        public AnimalSpecies species;
+        public AnimalIdentity.AnimalSpecies species;
         public ReactionMode mode = ReactionMode.Engage;
 
         [Tooltip("この距離に入ると気づく(様子を見る/ゆっくり近づき始める)距離")]
@@ -35,11 +30,17 @@ public class PredatorAI : MonoBehaviour
     [System.Serializable]
     public class RivalReaction
     {
-        public AnimalSpecies species;
+        public AnimalIdentity.AnimalSpecies species;
         [Tooltip("この距離に入るとケンカ(威嚇・攻撃)を始める")]
         public float engageDistance = 5f;
         [Tooltip("攻撃モーションを再生する間隔(秒)")]
         public float attackInterval = 1.2f;
+        [Tooltip("何秒間ケンカを続けたら離れるか")]
+        public float fightDuration = 5f;
+        [Tooltip("離れる際に確保する距離(メートル)")]
+        public float retreatDistance = 10f;
+        [Tooltip("離れた後、再度この相手とケンカするまでのクールダウン時間(秒)")]
+        public float cooldownAfterFight = 12f;
     }
 
     [Header("狩りの対象設定(この動物にとっての各種族への反応)")]
@@ -54,8 +55,8 @@ public class PredatorAI : MonoBehaviour
     public AnimalIdleBehavior idleBehavior;
 
     [Header("アニメーションのパラメータ名")]
-    public string watchTrigger = "Idle";   // その場で見るだけの状態(既存のIdleを流用してもよい)
-    public string stalkTrigger = "Walk";   // ゆっくり接近(既存のWalkを流用してもよい)
+    public string watchTrigger = "Idle";
+    public string stalkTrigger = "Walk";
     public string chaseTrigger = "Run";
     public string attackTrigger = "Attack";
     public string eatTrigger = "Eat";
@@ -64,13 +65,22 @@ public class PredatorAI : MonoBehaviour
     public float attackAnimDuration = 1.0f;
     public float eatAnimDuration = 3.0f;
 
+    [Header("離脱(ケンカ後に離れる)時の移動速度")]
+    public float wanderSpeedFallback = 1.4f;
+
     [Header("索敵の間隔(秒)")]
     public float scanInterval = 0.3f;
 
     private NavMeshAgent agent;
     private AnimalIdentity selfIdentity;
     private float scanTimer = 0f;
-    private bool isBusy = false; // 攻撃演出・ケンカ演出中はUpdateの通常判定を止める
+    private bool isBusy = false;
+
+    // ケンカ後、しばらく同じ相手を無視するためのクールダウン管理
+    private float rivalCooldownUntil = 0f;
+
+    // 現在の狩り関連の行動状態(Watch/Stalk/Chase)。同じ状態の間はTriggerを再発火させないためのフラグ管理
+    private PredatorState currentState = PredatorState.None;
 
     void Awake()
     {
@@ -85,6 +95,12 @@ public class PredatorAI : MonoBehaviour
     {
         if (isBusy) return;
 
+        // agentがNavMesh上に乗っていない場合は何もしない(憑依中やスポーン直後などで発生しうる)
+        if (agent == null || !agent.enabled || !agent.isOnNavMesh)
+        {
+            return;
+        }
+
         scanTimer -= Time.deltaTime;
         if (scanTimer > 0f) return;
         scanTimer = scanInterval;
@@ -92,6 +108,7 @@ public class PredatorAI : MonoBehaviour
         // 1. まずライバル(同格の捕食者)がいないか確認。見つかればケンカを優先。
         if (TryFindRival(out AnimalIdentity rival, out RivalReaction rivalRule))
         {
+            currentState = PredatorState.None;
             StartCoroutine(FightSequence(rival, rivalRule));
             return;
         }
@@ -103,13 +120,14 @@ public class PredatorAI : MonoBehaviour
 
             if (distance <= rule.catchDistance)
             {
+                currentState = PredatorState.None;
                 StartCoroutine(KillSequence(prey));
             }
             else if (distance <= rule.chaseDistance)
             {
                 Chase(prey.transform, rule.chaseSpeed);
             }
-            else // noticeDistance圏内
+            else
             {
                 if (rule.approachSpeed > 0f)
                 {
@@ -126,6 +144,7 @@ public class PredatorAI : MonoBehaviour
             // 何もターゲットがいない → 通常の徘徊に戻す
             agent.isStopped = true;
             idleBehavior?.Resume();
+            currentState = PredatorState.None;
         }
     }
 
@@ -137,7 +156,6 @@ public class PredatorAI : MonoBehaviour
         foundRule = null;
         foundDistance = float.MaxValue;
 
-        // 「本気で追跡できる状態にある獲物」を最優先し、その中で最も近いものを選ぶ
         AnimalIdentity bestChaseTarget = null;
         PreyReaction bestChaseRule = null;
         float bestChaseDist = float.MaxValue;
@@ -169,7 +187,6 @@ public class PredatorAI : MonoBehaviour
             }
         }
 
-        // 追跡可能な獲物がいればそちらを優先、いなければ様子見中の獲物を対象にする
         if (bestChaseTarget != null)
         {
             foundPrey = bestChaseTarget;
@@ -192,6 +209,9 @@ public class PredatorAI : MonoBehaviour
         foundRival = null;
         foundRule = null;
 
+        // クールダウン中はケンカ相手を探さない(直前にケンカを終えたばかりの場合)
+        if (Time.time < rivalCooldownUntil) return false;
+
         foreach (var rule in rivalReactions)
         {
             var rival = AnimalIdentity.FindNearest(rule.species, transform.position, selfIdentity);
@@ -208,13 +228,18 @@ public class PredatorAI : MonoBehaviour
         return false;
     }
 
-    // ---- 各状態の処理 ----
+    // ---- 各状態の処理(状態が変化したときだけTriggerを発火する) ----
 
     private void Watch(Transform target)
     {
         agent.isStopped = true;
         FaceTarget(target);
-        PlayAnim(watchTrigger);
+
+        if (currentState != PredatorState.Watching)
+        {
+            PlayAnim(watchTrigger);
+            currentState = PredatorState.Watching;
+        }
     }
 
     private void Stalk(Transform target, float speed)
@@ -222,7 +247,12 @@ public class PredatorAI : MonoBehaviour
         agent.isStopped = false;
         agent.speed = speed;
         agent.SetDestination(target.position);
-        PlayAnim(stalkTrigger);
+
+        if (currentState != PredatorState.Stalking)
+        {
+            PlayAnim(stalkTrigger);
+            currentState = PredatorState.Stalking;
+        }
     }
 
     private void Chase(Transform target, float speed)
@@ -230,7 +260,12 @@ public class PredatorAI : MonoBehaviour
         agent.isStopped = false;
         agent.speed = speed;
         agent.SetDestination(target.position);
-        PlayAnim(chaseTrigger);
+
+        if (currentState != PredatorState.Chasing)
+        {
+            PlayAnim(chaseTrigger);
+            currentState = PredatorState.Chasing;
+        }
     }
 
     private void FaceTarget(Transform target)
@@ -275,7 +310,7 @@ public class PredatorAI : MonoBehaviour
         idleBehavior?.Resume();
     }
 
-    // ---- ケンカシーケンス ----
+    // ---- ケンカシーケンス(一定時間で離脱する) ----
 
     private IEnumerator FightSequence(AnimalIdentity rival, RivalReaction rule)
     {
@@ -283,14 +318,50 @@ public class PredatorAI : MonoBehaviour
         idleBehavior?.Pause();
         agent.isStopped = true;
 
-        while (rival != null && Vector3.Distance(transform.position, rival.transform.position) <= rule.engageDistance)
+        float elapsed = 0f;
+
+        // 一定時間(fightDuration)が経過するか、相手が離れる/いなくなるまでケンカを続ける
+        while (rival != null
+               && elapsed < rule.fightDuration
+               && Vector3.Distance(transform.position, rival.transform.position) <= rule.engageDistance)
         {
             FaceTarget(rival.transform);
             PlayAnim(attackTrigger);
+
             yield return new WaitForSeconds(rule.attackInterval);
+            elapsed += rule.attackInterval;
         }
+
+        // 時間切れ、または相手が離れた場合、こちらも相手と反対方向へ離れる
+        if (rival != null)
+        {
+            RetreatFrom(rival.transform, rule.retreatDistance);
+            yield return new WaitUntil(() => !agent.pathPending && agent.remainingDistance <= 0.5f);
+        }
+
+        // しばらくの間、同じ相手とは再びケンカしないようにする
+        rivalCooldownUntil = Time.time + rule.cooldownAfterFight;
 
         isBusy = false;
         idleBehavior?.Resume();
+    }
+
+    private void RetreatFrom(Transform rival, float distance)
+    {
+        Vector3 retreatDirection = (transform.position - rival.position).normalized;
+        Vector3 retreatTargetPosition = transform.position + retreatDirection * distance;
+
+        agent.isStopped = false;
+        agent.speed = wanderSpeedFallback;
+        PlayAnim(stalkTrigger); // 離脱時はstalkTrigger("Walk")を流用
+
+        if (NavMesh.SamplePosition(retreatTargetPosition, out NavMeshHit hit, distance, NavMesh.AllAreas))
+        {
+            agent.SetDestination(hit.position);
+        }
+        else if (NavMesh.SamplePosition(retreatTargetPosition, out NavMeshHit widerHit, distance * 2f, NavMesh.AllAreas))
+        {
+            agent.SetDestination(widerHit.position);
+        }
     }
 }

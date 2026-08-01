@@ -4,6 +4,7 @@ using UnityEngine.AI;
 /// <summary>
 /// 動物の通常時の行動(待機・歩く・食べる)をランダムに繰り返す汎用スクリプト。
 /// 逃走中(FleeFromPredators作動中)や、PredatorAIによる狩り・ケンカ中は自動的に一時停止する。
+/// 群れを作る動物の場合、HerdBehaviorが設定されていれば徘徊先に群れの結合・分離を加味する。
 /// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 public class AnimalIdleBehavior : MonoBehaviour
@@ -40,6 +41,8 @@ public class AnimalIdleBehavior : MonoBehaviour
     [Header("外部連携(任意)")]
     [Tooltip("この動物のFleeFromPredators。設定すると逃走中は自動で徘徊を止める")]
     public FleeFromPredators fleeBehavior;
+    [Tooltip("群れを作る動物の場合、同じGameObjectのHerdBehaviorを設定する(未設定なら通常のランダム徘徊)")]
+    public HerdBehavior herdBehavior;
 
     private NavMeshAgent agent;
     private ActionType currentAction;
@@ -54,6 +57,10 @@ public class AnimalIdleBehavior : MonoBehaviour
         if (animator == null)
         {
             animator = GetComponentInChildren<Animator>();
+        }
+        if (herdBehavior == null)
+        {
+            herdBehavior = GetComponent<HerdBehavior>();
         }
     }
 
@@ -74,7 +81,6 @@ public class AnimalIdleBehavior : MonoBehaviour
         // PredatorAI等、外部からPause()されている間はここで待機
         if (isPaused)
         {
-            // Resume()が呼ばれるまでは何もしない
             return;
         }
 
@@ -161,6 +167,12 @@ public class AnimalIdleBehavior : MonoBehaviour
     private void StartWalk()
     {
         Vector3 randomPoint = transform.position + Random.insideUnitSphere * wanderRadius;
+
+        // 群れを作る動物の場合、ランダムな徘徊先に群れの結合・分離を加味する
+        if (herdBehavior != null)
+        {
+            randomPoint = herdBehavior.GetHerdAdjustedDestination(randomPoint);
+        }
 
         if (NavMesh.SamplePosition(randomPoint, out NavMeshHit hit, wanderRadius, NavMesh.AllAreas))
         {

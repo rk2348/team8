@@ -308,7 +308,10 @@ PrefabInstance:
     - {fileID: 4202985832985222644, guid: ccbca60406c19e643b22ce80e35cce26, type: 3}
     - {fileID: 8433573091807153901, guid: ccbca60406c19e643b22ce80e35cce26, type: 3}
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: ccbca60406c19e643b22ce80e35cce26, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 807906964}
   m_SourcePrefab: {fileID: 100100000, guid: ccbca60406c19e643b22ce80e35cce26, type: 3}
 --- !u!1 &298430240
 GameObject:
@@ -736,11 +739,38 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: ccbca60406c19e643b22ce80e35cce26, type: 3}
   m_PrefabInstance: {fileID: 1207685452}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &807906962 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: ccbca60406c19e643b22ce80e35cce26, type: 3}
+  m_PrefabInstance: {fileID: 134459938}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &807906963 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: ccbca60406c19e643b22ce80e35cce26, type: 3}
   m_PrefabInstance: {fileID: 134459938}
   m_PrefabAsset: {fileID: 0}
+--- !u!64 &807906964
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 807906962}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: 0}
 --- !u!1 &832575517
 GameObject:
   m_ObjectHideFlags: 0
@@ -2692,6 +2722,9 @@ GameObject:
   - component: {fileID: 95542184123813420}
   - component: {fileID: 95542184123813419}
   - component: {fileID: 95542184123813418}
+  - component: {fileID: 95542184123813422}
+  - component: {fileID: 95542184123813424}
+  - component: {fileID: 95542184123813423}
   m_Layer: 0
   m_Name: Zebra
   m_TagString: Untagged
@@ -4221,6 +4254,9 @@ GameObject:
   - component: {fileID: 95744299784895737}
   - component: {fileID: 95744299784895736}
   - component: {fileID: 95744299784895735}
+  - component: {fileID: 95744299784895738}
+  - component: {fileID: 95744299784895740}
+  - component: {fileID: 95744299784895739}
   m_Layer: 0
   m_Name: Deer
   m_TagString: Untagged
@@ -4403,6 +4439,8 @@ GameObject:
   - component: {fileID: 95040164830613266}
   - component: {fileID: 95040164830613265}
   - component: {fileID: 95040164830613264}
+  - component: {fileID: 95040164830613269}
+  - component: {fileID: 95040164830613268}
   m_Layer: 0
   m_Name: Wild_rabbit
   m_TagString: Untagged
@@ -5646,6 +5684,8 @@ GameObject:
   - component: {fileID: 95179220727760923}
   - component: {fileID: 95179220727760922}
   - component: {fileID: 95179220727760921}
+  - component: {fileID: 95179220727760926}
+  - component: {fileID: 95179220727760925}
   m_Layer: 0
   m_Name: Tiger
   m_TagString: Untagged
@@ -6553,6 +6593,9 @@ GameObject:
   - component: {fileID: 95436872047393570}
   - component: {fileID: 95436872047393569}
   - component: {fileID: 95436872047393568}
+  - component: {fileID: 95436872047393572}
+  - component: {fileID: 95436872047393574}
+  - component: {fileID: 95436872047393573}
   m_Layer: 0
   m_Name: Cattle_male
   m_TagString: Untagged
@@ -6703,6 +6746,9 @@ GameObject:
   - component: {fileID: 95287945925294114}
   - component: {fileID: 95287945925294113}
   - component: {fileID: 95287945925294112}
+  - component: {fileID: 95287945925294116}
+  - component: {fileID: 95287945925294118}
+  - component: {fileID: 95287945925294117}
   m_Layer: 0
   m_Name: Horse
   m_TagString: Untagged
@@ -11971,6 +12017,7 @@ MonoBehaviour:
   walkWeight: 1
   eatWeight: 3
   fleeBehavior: {fileID: 0}
+  herdBehavior: {fileID: 0}
 --- !u!195 &95040164830613266
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -12007,6 +12054,54 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimalHealth
   dieTrigger: Die
   disableDelayAfterDeath: 5
+--- !u!65 &95040164830613268
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502058721898384}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &95040164830613269
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1502058721898384}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 112
+  m_CollisionDetection: 0
 --- !u!95 &95179220727760914
 Animator:
   serializedVersion: 7
@@ -12258,6 +12353,9 @@ MonoBehaviour:
   - species: 7
     engageDistance: 5
     attackInterval: 1.2
+    fightDuration: 5
+    retreatDistance: 10
+    cooldownAfterFight: 12
   animator: {fileID: 95179220727760914}
   idleBehavior: {fileID: 95179220727760923}
   watchTrigger: Idle
@@ -12267,6 +12365,7 @@ MonoBehaviour:
   eatTrigger: Eat
   attackAnimDuration: 1
   eatAnimDuration: 3
+  wanderSpeedFallback: 1.4
   scanInterval: 0.3
 --- !u!114 &95179220727760922
 MonoBehaviour:
@@ -12306,6 +12405,7 @@ MonoBehaviour:
   walkWeight: 2
   eatWeight: 0.3
   fleeBehavior: {fileID: 0}
+  herdBehavior: {fileID: 0}
 --- !u!114 &95179220727760924
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12320,6 +12420,54 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimalHealth
   dieTrigger: Die
   disableDelayAfterDeath: 5
+--- !u!65 &95179220727760925
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1799965025696064}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &95179220727760926
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1799965025696064}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 112
+  m_CollisionDetection: 0
 --- !u!95 &95287945925294110
 Animator:
   serializedVersion: 7
@@ -12402,6 +12550,7 @@ MonoBehaviour:
   walkWeight: 3
   eatWeight: 1
   fleeBehavior: {fileID: 0}
+  herdBehavior: {fileID: 0}
 --- !u!195 &95287945925294114
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -12438,6 +12587,71 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimalHealth
   dieTrigger: Die
   disableDelayAfterDeath: 5
+--- !u!114 &95287945925294116
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1963540039625460}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00fb58d1b6cef2f4b87d429620e4de5f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HerdBehavior
+  herdRadius: 15
+  cohesionWeight: 0.4
+  separationWeight: 0.6
+  separationDistance: 3
+  maxStrayDistance: 25
+--- !u!65 &95287945925294117
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1963540039625460}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &95287945925294118
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1963540039625460}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 112
+  m_CollisionDetection: 0
 --- !u!95 &95436872047393566
 Animator:
   serializedVersion: 7
@@ -12520,6 +12734,7 @@ MonoBehaviour:
   walkWeight: 1.5
   eatWeight: 2.5
   fleeBehavior: {fileID: 0}
+  herdBehavior: {fileID: 0}
 --- !u!195 &95436872047393570
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -12556,6 +12771,71 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimalHealth
   dieTrigger: Die
   disableDelayAfterDeath: 5
+--- !u!114 &95436872047393572
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1924743051585372}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00fb58d1b6cef2f4b87d429620e4de5f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HerdBehavior
+  herdRadius: 15
+  cohesionWeight: 0.4
+  separationWeight: 0.6
+  separationDistance: 3
+  maxStrayDistance: 25
+--- !u!65 &95436872047393573
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1924743051585372}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &95436872047393574
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1924743051585372}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 112
+  m_CollisionDetection: 0
 --- !u!95 &95542184123813416
 Animator:
   serializedVersion: 7
@@ -12638,6 +12918,7 @@ MonoBehaviour:
   walkWeight: 1
   eatWeight: 2.5
   fleeBehavior: {fileID: 0}
+  herdBehavior: {fileID: 0}
 --- !u!195 &95542184123813420
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -12674,6 +12955,71 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimalHealth
   dieTrigger: Die
   disableDelayAfterDeath: 5
+--- !u!114 &95542184123813422
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1152424323733282}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00fb58d1b6cef2f4b87d429620e4de5f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HerdBehavior
+  herdRadius: 15
+  cohesionWeight: 0.4
+  separationWeight: 0.6
+  separationDistance: 3
+  maxStrayDistance: 25
+--- !u!65 &95542184123813423
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1152424323733282}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &95542184123813424
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1152424323733282}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 112
+  m_CollisionDetection: 0
 --- !u!95 &95744299784895730
 Animator:
   serializedVersion: 7
@@ -12765,6 +13111,7 @@ MonoBehaviour:
   walkWeight: 2
   eatWeight: 1.5
   fleeBehavior: {fileID: 95744299784895731}
+  herdBehavior: {fileID: 0}
 --- !u!114 &95744299784895734
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12825,6 +13172,7 @@ MonoBehaviour:
   walkWeight: 2
   eatWeight: 1
   fleeBehavior: {fileID: 0}
+  herdBehavior: {fileID: 0}
 --- !u!114 &95744299784895737
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12839,6 +13187,71 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimalHealth
   dieTrigger: Die
   disableDelayAfterDeath: 5
+--- !u!114 &95744299784895738
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1469320198415856}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00fb58d1b6cef2f4b87d429620e4de5f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HerdBehavior
+  herdRadius: 15
+  cohesionWeight: 0.4
+  separationWeight: 0.6
+  separationDistance: 3
+  maxStrayDistance: 25
+--- !u!65 &95744299784895739
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1469320198415856}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &95744299784895740
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1469320198415856}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 112
+  m_CollisionDetection: 0
 --- !u!137 &137000871712111800
 SkinnedMeshRenderer:
   m_ObjectHideFlags: 0
@@ -14546,6 +14959,8 @@ GameObject:
   - component: {fileID: 1870480655377994378}
   - component: {fileID: 1870480655377994377}
   - component: {fileID: 1870480655377994376}
+  - component: {fileID: 1870480655377994382}
+  - component: {fileID: 1870480655377994381}
   m_Layer: 0
   m_Name: Wolf
   m_TagString: Untagged
@@ -14625,6 +15040,9 @@ MonoBehaviour:
   - species: 6
     engageDistance: 5
     attackInterval: 1.2
+    fightDuration: 5
+    retreatDistance: 10
+    cooldownAfterFight: 12
   animator: {fileID: 0}
   idleBehavior: {fileID: 0}
   watchTrigger: Idle
@@ -14634,6 +15052,7 @@ MonoBehaviour:
   eatTrigger: Eat
   attackAnimDuration: 1
   eatAnimDuration: 3
+  wanderSpeedFallback: 1.4
   scanInterval: 0.3
 --- !u!114 &1870480655377994377
 MonoBehaviour:
@@ -14673,6 +15092,7 @@ MonoBehaviour:
   walkWeight: 2.5
   eatWeight: 0.3
   fleeBehavior: {fileID: 0}
+  herdBehavior: {fileID: 0}
 --- !u!195 &1870480655377994379
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -14709,6 +15129,54 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimalHealth
   dieTrigger: Die
   disableDelayAfterDeath: 5
+--- !u!65 &1870480655377994381
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1870480655377994374}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &1870480655377994382
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1870480655377994374}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 112
+  m_CollisionDetection: 0
 --- !u!1 &1870508160582553190
 GameObject:
   m_ObjectHideFlags: 0
@@ -16729,6 +17197,9 @@ GameObject:
   - component: {fileID: 6463851230674429402}
   - component: {fileID: 6463851230674429401}
   - component: {fileID: 6463851230674429400}
+  - component: {fileID: 6463851230674429403}
+  - component: {fileID: 6463851230674429405}
+  - component: {fileID: 6463851230674429404}
   m_Layer: 0
   m_Name: African_elephant
   m_TagString: Untagged
@@ -17371,6 +17842,7 @@ MonoBehaviour:
   walkWeight: 1
   eatWeight: 2.5
   fleeBehavior: {fileID: 0}
+  herdBehavior: {fileID: 0}
 --- !u!195 &6463851230674429401
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -17407,6 +17879,71 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AnimalHealth
   dieTrigger: Die
   disableDelayAfterDeath: 5
+--- !u!114 &6463851230674429403
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6460102014000140862}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 00fb58d1b6cef2f4b87d429620e4de5f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HerdBehavior
+  herdRadius: 15
+  cohesionWeight: 0.4
+  separationWeight: 0.6
+  separationDistance: 3
+  maxStrayDistance: 25
+--- !u!65 &6463851230674429404
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6460102014000140862}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!54 &6463851230674429405
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6460102014000140862}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 112
+  m_CollisionDetection: 0
 --- !u!4 &6463853767104534512
 Transform:
   m_ObjectHideFlags: 0
@@ -17779,8 +18316,8 @@ SceneRoots:
   - {fileID: 1974098005}
   - {fileID: 1771559850}
   - {fileID: 1379989796}
-  - {fileID: 1802097854}
   - {fileID: 1470104734}
+  - {fileID: 1802097854}
   - {fileID: 4695555027777294}
   - {fileID: 1865132776843043222}
   - {fileID: 4002097797570810}

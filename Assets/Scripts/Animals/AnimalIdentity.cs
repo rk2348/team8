@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// 動物の種族を識別するコンポーネント。全ての動物(捕食者・被食者問わず)に付ける。
-/// 同時に、種族ごとの一覧を静的に保持し、近くの動物を高速に検索できるようにする。
+/// 同時に、種族ごとの一覧を静的に保持し、近くの動物や群れの仲間を高速に検索できるようにする。
 /// </summary>
 public class AnimalIdentity : MonoBehaviour
 {
@@ -15,6 +15,7 @@ public class AnimalIdentity : MonoBehaviour
     [Tooltip("この動物の種族")]
     public AnimalSpecies species;
 
+    // 種族ごとの登録簿(シーン内の全個体をキャッシュしておくことで、毎回FindObjectsOfTypeするコストを避ける)
     private static readonly Dictionary<AnimalSpecies, List<AnimalIdentity>> registry
         = new Dictionary<AnimalSpecies, List<AnimalIdentity>>();
 
@@ -35,6 +36,10 @@ public class AnimalIdentity : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// 指定した種族の中から、基準位置に最も近い1体を探す(自分自身は除外)。
+    /// PredatorAIの狩り・ケンカ対象探索、FleeFromPredatorsの捕食者探索などに使用する。
+    /// </summary>
     public static AnimalIdentity FindNearest(AnimalSpecies targetSpecies, Vector3 fromPosition, AnimalIdentity exclude = null)
     {
         if (!registry.ContainsKey(targetSpecies)) return null;
@@ -54,5 +59,27 @@ public class AnimalIdentity : MonoBehaviour
             }
         }
         return nearest;
+    }
+
+    /// <summary>
+    /// 指定した種族の中から、基準位置の半径内にいる個体を全て集める(自分自身は除外)。
+    /// HerdBehavior(群れ行動)の仲間探索に使用する。
+    /// </summary>
+    public static int CollectNearby(AnimalSpecies species, Vector3 fromPosition, float radius, AnimalIdentity exclude, List<AnimalIdentity> results)
+    {
+        results.Clear();
+        if (!registry.ContainsKey(species)) return 0;
+
+        foreach (var animal in registry[species])
+        {
+            if (animal == exclude || animal == null) continue;
+
+            float dist = Vector3.Distance(fromPosition, animal.transform.position);
+            if (dist <= radius)
+            {
+                results.Add(animal);
+            }
+        }
+        return results.Count;
     }
 }
