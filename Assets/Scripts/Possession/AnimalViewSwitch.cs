@@ -27,6 +27,16 @@ public class AnimalViewSwitch : MonoBehaviour
     [Tooltip("この動物が今いるエリア名")]
     public string locationName = "サバンナエリア";
 
+    [Header("鳴き声の設定")]
+    [Tooltip("鳴き声を再生するAudioSource(動物のオブジェクトにアタッチしておく)")]
+    public AudioSource cryAudioSource;
+    [Tooltip("再生する鳴き声のAudioClip")]
+    public AudioClip crySound;
+    [Tooltip("連打防止のためのクールダウン時間(秒)")]
+    public float cryCooldown = 1.0f;
+
+    private float lastCryTime = -999f;
+
 
     // 憑依解除時に元へ戻すための情報
     private Transform originalParent;
@@ -68,6 +78,12 @@ public class AnimalViewSwitch : MonoBehaviour
             {
                 ReleaseAnimal();
             }
+
+            // 憑依中に右手人差し指トリガーが押されたら鳴き声を再生
+            if (OVRInput.GetDown(OVRInput.RawButton.RIndexTrigger))
+            {
+                PerformSpecialAction();
+            }
         }
     }
     private void PossessAnimal()
@@ -104,8 +120,6 @@ public class AnimalViewSwitch : MonoBehaviour
         }
         Debug.Log("動物に乗り移り、実態と同期しました！");
 
-        Debug.Log("動物に乗り移り、実態と同期しました！");
-
         // HUD表示
         if (hudController != null)
         {
@@ -136,6 +150,25 @@ public class AnimalViewSwitch : MonoBehaviour
         if (hudController != null)
         {
             hudController.HideHUD();
+        }
+
+
+    }
+
+    private void PerformSpecialAction()
+    {
+        // クールダウン中は連打による多重再生を防ぐ
+        if (Time.time - lastCryTime < cryCooldown) return;
+        lastCryTime = Time.time;
+
+        if (cryAudioSource != null && crySound != null)
+        {
+            cryAudioSource.PlayOneShot(crySound);
+            Debug.Log("鳴き声を再生しました。");
+        }
+        else
+        {
+            Debug.LogWarning("AnimalViewSwitch: cryAudioSourceまたはcrySoundが設定されていません。");
         }
     }
 }
