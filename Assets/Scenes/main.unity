@@ -5638,8 +5638,8 @@ GameObject:
   - component: {fileID: 4695555027777294}
   - component: {fileID: 95179220727760914}
   - component: {fileID: 95179220727760919}
-  - component: {fileID: 95179220727760915}
   - component: {fileID: 95179220727760916}
+  - component: {fileID: 95179220727760915}
   - component: {fileID: 95179220727760917}
   - component: {fileID: 95179220727760920}
   - component: {fileID: 95179220727760924}
@@ -11937,12 +11937,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FleeFromPredators
   detectionRadius: 8
-  fleeDistance: 12
-  normalSpeed: 2
-  fleeSpeed: 6
-  fleeUpdateInterval: 0.5
-  predatorSearchInterval: 1
-  animator: {fileID: 0}
+  fleeDistance: 6
+  normalSpeed: 1
+  fleeSpeed: 7
+  fleeUpdateInterval: 0.3
+  predatorSearchInterval: 0.8
+  animator: {fileID: 95040164830613262}
   isRunningParam: IsRunning
   isFleeing: 0
   currentThreat: {fileID: 0}
@@ -11958,18 +11958,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a10f687065632864f9c774e9e006ec93, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimalIdleBehavior
-  animator: {fileID: 0}
+  animator: {fileID: 95040164830613262}
   idleTrigger: Idle
   walkTrigger: Walk
   eatTrigger: Eat
-  idleDurationRange: {x: 2, y: 5}
-  eatDurationRange: {x: 3, y: 6}
-  wanderSpeed: 1.2
-  wanderRadius: 10
-  arrivalThreshold: 0.5
+  idleDurationRange: {x: 1, y: 2}
+  eatDurationRange: {x: 2, y: 3}
+  wanderSpeed: 1
+  wanderRadius: 5
+  arrivalThreshold: 0.3
   idleWeight: 1
-  walkWeight: 2
-  eatWeight: 1
+  walkWeight: 1
+  eatWeight: 3
   fleeBehavior: {fileID: 0}
 --- !u!195 &95040164830613266
 NavMeshAgent:
@@ -12211,10 +12211,55 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c2bc2abd2ee08e4ca708097c47b6013, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PredatorAI
-  preyReactions: []
-  rivalReactions: []
-  animator: {fileID: 0}
-  idleBehavior: {fileID: 0}
+  preyReactions:
+  - species: 0
+    mode: 1
+    noticeDistance: 15
+    chaseDistance: 8
+    catchDistance: 1.8
+    approachSpeed: 0
+    chaseSpeed: 7
+  - species: 1
+    mode: 1
+    noticeDistance: 16
+    chaseDistance: 9
+    catchDistance: 1.8
+    approachSpeed: 0
+    chaseSpeed: 10
+  - species: 2
+    mode: 1
+    noticeDistance: 16
+    chaseDistance: 9
+    catchDistance: 1.8
+    approachSpeed: 0
+    chaseSpeed: 9.5
+  - species: 3
+    mode: 1
+    noticeDistance: 18
+    chaseDistance: 10
+    catchDistance: 1.5
+    approachSpeed: 1
+    chaseSpeed: 9.5
+  - species: 4
+    mode: 0
+    noticeDistance: 0
+    chaseDistance: 0
+    catchDistance: 0
+    approachSpeed: 0
+    chaseSpeed: 0
+  - species: 5
+    mode: 0
+    noticeDistance: 0
+    chaseDistance: 0
+    catchDistance: 0
+    approachSpeed: 0
+    chaseSpeed: 0
+  rivalReactions:
+  - species: 7
+    engageDistance: 5
+    attackInterval: 1.2
+  animator: {fileID: 95179220727760914}
+  idleBehavior: {fileID: 95179220727760923}
   watchTrigger: Idle
   stalkTrigger: Walk
   chaseTrigger: Run
@@ -12248,18 +12293,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a10f687065632864f9c774e9e006ec93, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimalIdleBehavior
-  animator: {fileID: 0}
+  animator: {fileID: 95179220727760914}
   idleTrigger: Idle
   walkTrigger: Walk
   eatTrigger: Eat
-  idleDurationRange: {x: 2, y: 5}
-  eatDurationRange: {x: 3, y: 6}
-  wanderSpeed: 1.2
-  wanderRadius: 10
+  idleDurationRange: {x: 3, y: 6}
+  eatDurationRange: {x: 2, y: 4}
+  wanderSpeed: 1.4
+  wanderRadius: 15
   arrivalThreshold: 0.5
-  idleWeight: 1
+  idleWeight: 2
   walkWeight: 2
-  eatWeight: 1
+  eatWeight: 0.3
   fleeBehavior: {fileID: 0}
 --- !u!114 &95179220727760924
 MonoBehaviour:
@@ -12322,13 +12367,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 270efd0cbd7c6e04db22dbae4d9b8bc1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FleeFromPredators
-  detectionRadius: 8
-  fleeDistance: 12
-  normalSpeed: 2
-  fleeSpeed: 6
-  fleeUpdateInterval: 0.5
+  detectionRadius: 10
+  fleeDistance: 15
+  normalSpeed: 2.2
+  fleeSpeed: 9
+  fleeUpdateInterval: 0.4
   predatorSearchInterval: 1
-  animator: {fileID: 0}
+  animator: {fileID: 95287945925294110}
   isRunningParam: IsRunning
   isFleeing: 0
   currentThreat: {fileID: 0}
@@ -12344,17 +12389,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a10f687065632864f9c774e9e006ec93, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimalIdleBehavior
-  animator: {fileID: 0}
+  animator: {fileID: 95287945925294110}
   idleTrigger: Idle
   walkTrigger: Walk
   eatTrigger: Eat
-  idleDurationRange: {x: 2, y: 5}
-  eatDurationRange: {x: 3, y: 6}
-  wanderSpeed: 1.2
-  wanderRadius: 10
+  idleDurationRange: {x: 2, y: 4}
+  eatDurationRange: {x: 3, y: 5}
+  wanderSpeed: 2.2
+  wanderRadius: 16
   arrivalThreshold: 0.5
   idleWeight: 1
-  walkWeight: 2
+  walkWeight: 3
   eatWeight: 1
   fleeBehavior: {fileID: 0}
 --- !u!195 &95287945925294114
@@ -12440,13 +12485,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 270efd0cbd7c6e04db22dbae4d9b8bc1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FleeFromPredators
-  detectionRadius: 8
-  fleeDistance: 12
-  normalSpeed: 2
-  fleeSpeed: 6
+  detectionRadius: 6
+  fleeDistance: 8
+  normalSpeed: 1
+  fleeSpeed: 5
   fleeUpdateInterval: 0.5
   predatorSearchInterval: 1
-  animator: {fileID: 0}
+  animator: {fileID: 95436872047393566}
   isRunningParam: IsRunning
   isFleeing: 0
   currentThreat: {fileID: 0}
@@ -12462,18 +12507,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a10f687065632864f9c774e9e006ec93, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimalIdleBehavior
-  animator: {fileID: 0}
+  animator: {fileID: 95436872047393566}
   idleTrigger: Idle
   walkTrigger: Walk
   eatTrigger: Eat
-  idleDurationRange: {x: 2, y: 5}
-  eatDurationRange: {x: 3, y: 6}
-  wanderSpeed: 1.2
-  wanderRadius: 10
+  idleDurationRange: {x: 3, y: 6}
+  eatDurationRange: {x: 5, y: 9}
+  wanderSpeed: 1
+  wanderRadius: 8
   arrivalThreshold: 0.5
-  idleWeight: 1
-  walkWeight: 2
-  eatWeight: 1
+  idleWeight: 1.5
+  walkWeight: 1.5
+  eatWeight: 2.5
   fleeBehavior: {fileID: 0}
 --- !u!195 &95436872047393570
 NavMeshAgent:
@@ -12558,13 +12603,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 270efd0cbd7c6e04db22dbae4d9b8bc1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FleeFromPredators
-  detectionRadius: 8
-  fleeDistance: 12
-  normalSpeed: 2
-  fleeSpeed: 6
-  fleeUpdateInterval: 0.5
-  predatorSearchInterval: 1
-  animator: {fileID: 0}
+  detectionRadius: 5
+  fleeDistance: 6
+  normalSpeed: 0.8
+  fleeSpeed: 3
+  fleeUpdateInterval: 0.6
+  predatorSearchInterval: 1.5
+  animator: {fileID: 95542184123813416}
   isRunningParam: IsRunning
   isFleeing: 0
   currentThreat: {fileID: 0}
@@ -12580,18 +12625,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a10f687065632864f9c774e9e006ec93, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimalIdleBehavior
-  animator: {fileID: 0}
+  animator: {fileID: 95542184123813416}
   idleTrigger: Idle
   walkTrigger: Walk
   eatTrigger: Eat
-  idleDurationRange: {x: 2, y: 5}
-  eatDurationRange: {x: 3, y: 6}
-  wanderSpeed: 1.2
-  wanderRadius: 10
+  idleDurationRange: {x: 2, y: 4}
+  eatDurationRange: {x: 3, y: 5}
+  wanderSpeed: 2
+  wanderRadius: 14
   arrivalThreshold: 0.5
-  idleWeight: 1
-  walkWeight: 2
-  eatWeight: 1
+  idleWeight: 0.5
+  walkWeight: 1
+  eatWeight: 2.5
   fleeBehavior: {fileID: 0}
 --- !u!195 &95542184123813420
 NavMeshAgent:
@@ -12711,14 +12756,14 @@ MonoBehaviour:
   idleTrigger: Idle
   walkTrigger: Walk
   eatTrigger: Eat
-  idleDurationRange: {x: 2, y: 5}
-  eatDurationRange: {x: 3, y: 6}
-  wanderSpeed: 1.2
-  wanderRadius: 10
-  arrivalThreshold: 0.5
-  idleWeight: 1
+  idleDurationRange: {x: 1.5, y: 3}
+  eatDurationRange: {x: 2, y: 4}
+  wanderSpeed: 1.6
+  wanderRadius: 12
+  arrivalThreshold: 0.4
+  idleWeight: 1.5
   walkWeight: 2
-  eatWeight: 1
+  eatWeight: 1.5
   fleeBehavior: {fileID: 95744299784895731}
 --- !u!114 &95744299784895734
 MonoBehaviour:
@@ -12745,13 +12790,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 270efd0cbd7c6e04db22dbae4d9b8bc1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FleeFromPredators
-  detectionRadius: 8
-  fleeDistance: 12
-  normalSpeed: 2
-  fleeSpeed: 6
-  fleeUpdateInterval: 0.5
-  predatorSearchInterval: 1
-  animator: {fileID: 0}
+  detectionRadius: 14
+  fleeDistance: 16
+  normalSpeed: 1.6
+  fleeSpeed: 9
+  fleeUpdateInterval: 0.3
+  predatorSearchInterval: 0.8
+  animator: {fileID: 95744299784895730}
   isRunningParam: IsRunning
   isFleeing: 0
   currentThreat: {fileID: 0}
@@ -14495,9 +14540,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1865132776843043222}
   - component: {fileID: 1775220055451025626}
+  - component: {fileID: 1870480655377994379}
   - component: {fileID: 1870480655377994375}
   - component: {fileID: 1870480655377994380}
-  - component: {fileID: 1870480655377994379}
   - component: {fileID: 1870480655377994378}
   - component: {fileID: 1870480655377994377}
   - component: {fileID: 1870480655377994376}
@@ -14533,8 +14578,53 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c2bc2abd2ee08e4ca708097c47b6013, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PredatorAI
-  preyReactions: []
-  rivalReactions: []
+  preyReactions:
+  - species: 0
+    mode: 0
+    noticeDistance: 0
+    chaseDistance: 0
+    catchDistance: 0
+    approachSpeed: 0
+    chaseSpeed: 0
+  - species: 1
+    mode: 0
+    noticeDistance: 0
+    chaseDistance: 0
+    catchDistance: 0
+    approachSpeed: 0
+    chaseSpeed: 0
+  - species: 2
+    mode: 0
+    noticeDistance: 0
+    chaseDistance: 0
+    catchDistance: 0
+    approachSpeed: 0
+    chaseSpeed: 0
+  - species: 5
+    mode: 0
+    noticeDistance: 0
+    chaseDistance: 0
+    catchDistance: 0
+    approachSpeed: 0
+    chaseSpeed: 0
+  - species: 3
+    mode: 1
+    noticeDistance: 16
+    chaseDistance: 9
+    catchDistance: 1.5
+    approachSpeed: 1.2
+    chaseSpeed: 9.5
+  - species: 4
+    mode: 1
+    noticeDistance: 10
+    chaseDistance: 5
+    catchDistance: 1
+    approachSpeed: 1
+    chaseSpeed: 7.5
+  rivalReactions:
+  - species: 6
+    engageDistance: 5
+    attackInterval: 1.2
   animator: {fileID: 0}
   idleBehavior: {fileID: 0}
   watchTrigger: Idle
@@ -14557,7 +14647,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c5d48aeb132a2e44386a542d3cc59a76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Predator
-  predatorName: Tiger
+  predatorName: Wolf
 --- !u!114 &1870480655377994378
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14570,18 +14660,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a10f687065632864f9c774e9e006ec93, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimalIdleBehavior
-  animator: {fileID: 0}
+  animator: {fileID: 1775220055451025626}
   idleTrigger: Idle
   walkTrigger: Walk
   eatTrigger: Eat
   idleDurationRange: {x: 2, y: 5}
-  eatDurationRange: {x: 3, y: 6}
-  wanderSpeed: 1.2
-  wanderRadius: 10
+  eatDurationRange: {x: 2, y: 4}
+  wanderSpeed: 1.5
+  wanderRadius: 18
   arrivalThreshold: 0.5
-  idleWeight: 1
-  walkWeight: 2
-  eatWeight: 1
+  idleWeight: 1.5
+  walkWeight: 2.5
+  eatWeight: 0.3
   fleeBehavior: {fileID: 0}
 --- !u!195 &1870480655377994379
 NavMeshAgent:
@@ -17268,18 +17358,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a10f687065632864f9c774e9e006ec93, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimalIdleBehavior
-  animator: {fileID: 0}
+  animator: {fileID: 6410577816730677940}
   idleTrigger: Idle
   walkTrigger: Walk
   eatTrigger: Eat
-  idleDurationRange: {x: 2, y: 5}
-  eatDurationRange: {x: 3, y: 6}
-  wanderSpeed: 1.2
+  idleDurationRange: {x: 4, y: 8}
+  eatDurationRange: {x: 6, y: 12}
+  wanderSpeed: 0.8
   wanderRadius: 10
-  arrivalThreshold: 0.5
+  arrivalThreshold: 0.6
   idleWeight: 1
-  walkWeight: 2
-  eatWeight: 1
+  walkWeight: 1
+  eatWeight: 2.5
   fleeBehavior: {fileID: 0}
 --- !u!195 &6463851230674429401
 NavMeshAgent:
