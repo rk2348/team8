@@ -83,4 +83,4 @@ public class AnimalViewSwitchDistance : MonoBehaviour
 
         Debug.Log("“®•¨‚Éæ‚èˆÚ‚èAÀ‘Ô‚Æ“¯Šú‚µ‚Ü‚µ‚½I");
     }
-}[
+}
