@@ -584,20 +584,20 @@ Hackit2026の3日間の開催期間（実質開発時間：約16.5時間）で�
 | ID | 症状 | 発生条件 | 状態・回避策 |
 | --- | --- | --- | --- |
 | #001 | （例）憑依解除時に一瞬視点が地面にめり込む | 動物が移動中に憑依解除した場合 | 調査中。静止時に解除すれば発生しない |
-| #002 | `NavMeshAgent.remainingDistance`呼び出し時に例外（"can only be called on an active agent that has been placed on a NavMesh"） | 憑依中に動物がNavMesh範囲外へ移動した場合、スポーン位置がNavMesh外だった場合 | ✅解決済み。`AnimalIdleBehavior`/`PredatorAI`のUpdateに`agent.isOnNavMesh`チェックを追加し、憑依中は該当AIコンポーネント自体を無効化 |
-| #003 | 狩り対象を発見した動物のアニメーションが異常な速度で再生される | `PredatorAI`が索敵間隔（0.3秒）ごとに同じTriggerを再発火させていた | ✅解決済み。現在の行動状態（Watching/Stalking/Chasing）を保持し、状態が変化した時だけTriggerを発火するよう修正 |
+| #002 | `NavMeshAgent.remainingDistance`呼び出し時に例外（"can only be called on an active agent that has been placed on a NavMesh"） | 憑依中に動物がNavMesh範囲外へ移動した場合、スポーン位置がNavMesh外だった場合 | 解決済み。`AnimalIdleBehavior`/`PredatorAI`のUpdateに`agent.isOnNavMesh`チェックを追加し、憑依中は該当AIコンポーネント自体を無効化 |
+| #003 | 狩り対象を発見した動物のアニメーションが異常な速度で再生される | `PredatorAI`が索敵間隔（0.3秒）ごとに同じTriggerを再発火させていた | 解決済み。現在の行動状態（Watching/Stalking/Chasing）を保持し、状態が変化した時だけTriggerを発火するよう修正 |
 | #004 | 静止しているのにWalkアニメーションが再生される／移動中なのにIdleが再生される | Animatorに新旧2種類の遷移（Any State方式と個別State間の直接遷移）が混在し、一部の矢印で`Has Exit Time`がオンのまま残っていた | 🚧対応中。全遷移をAny State方式に統一し`Has Exit Time`をオフにする作業を実施中 |
-| #005 | HUDのCanvasがVRで頭を動かしても追従しない | `viewpoint`にカメラの子ではなく`OVRCameraRig`ルートを参照していた（回転が伝わらない） | ✅解決済み。`CenterEyeAnchor`を直接参照し、`HUDFollowViewpoint`をカメラの子として付け替える方式に変更 |
-| #006 | 自動移動（`VRMovement`）が終了地点を通過してしまう | 1フレームの移動量が残り距離より大きい場合、目的地を追い越していた | ✅解決済み。1フレームの移動量を残り距離でクランプし、到達判定時に座標を最終的にピッタリ合わせる処理を追加 |
-| #007 | 自動移動の終着点で高さ(Y座標)が意図通りにならない・落下する | 当初は水平移動のみで高さを重力任せにしており、Character ControllerのCenter/Heightのオフセットも考慮していなかった | ✅解決済み。transform.positionを直接3軸制御する方式に統一し、開始・終了地点のYがそのまま反映されるよう変更（詳細は第27章） |
-| #008 | 自動移動の到着直後に「ストン」と落下する／開始直後にも同様の現象が起きる | `CharacterController.isGrounded`はMove()呼び出し後でないと正しく判定されず、起動直後や自動移動終了直後に一瞬「浮いている」と誤判定され、重力が過剰に加算されていた | ✅解決済み。`Start()`時に小さく下方向へMove()して初期接地判定を正しくする処理と、自動移動終了時に`verticalVelocity`をリセットする処理を追加 |
-| #009 | 自動移動の到着後、その場から一切動けなくなる | transform.positionを直接動かす方式にしたことで衝突判定を経由せず、境界条件次第でCharacter Controllerのカプセルが地形にわずかにめり込むケースがあった | ✅解決済み。到着直後に`Physics.OverlapCapsule` + `Physics.ComputePenetration`でめり込みを検出し、Skin Width以上のめり込みだけを自動的に押し出す処理を追加（正常な接地は誤って押し出さないよう除外） |
-| #010 | Quest実機で、実際に描画される前にキャラクターが動き出してしまう | `Start()`の時点ではOVRのHMDトラッキング・VRフォーカスがまだ確立しておらず、その状態でCharacterController.Move()が呼ばれていた | ✅解決済み。`OVRManager.instance.isHmdPresent`と`OVRManager.hasVrFocus`の両方が揃うまで待機するコルーチンを追加し、揃った後も追加の待機時間を設けてから自動移動を開始するよう変更 |
-| #011 | 憑依演出アニメーションが再生されない | ①AnimatorのState間の遷移が「roar → Any State」という逆方向に組まれており「Any State → roar」の遷移が存在しなかった／②`possessionIntroClip`(AnimationClip直接指定欄)に誤って通常のClipが設定されており、レガシーAnimationコンポーネントでの再生が優先されてLegacy未マークの警告が出ていた | ✅解決済み。Animatorの遷移方向を修正し、Trigger方式とClip方式の優先順位を明確化（Clip未設定ならTrigger方式にフォールバック） |
-| #012 | Animatorが複数アタッチされている動物で、意図しない方が使われる | `GetComponentInChildren<Animator>()`は最初に見つかった1つを返すだけで、複数ある場合にどちらが取れるか保証されない | ✅解決済み。攻撃用・演出用それぞれのAnimatorをInspectorで直接アタッチする方式に変更し、未設定時のみ自動取得にフォールバックするよう修正 |
-| #013 | HUDのパネル切り替えが瞬間的でチープに見える | 全パネルが`SetActive(true/false)`による瞬時切り替えのみだった | ✅解決済み。CanvasGroupのalphaをコルーチンでフェードさせる共通ヘルパーを実装し、既存の呼び出しコードを変更せずに全パネルの表示/非表示を動的なフェードに置き換え |
-| #014 | 群れを作る動物の徘徊先が群れ補正されない | `AnimalIdleBehavior`は`HerdBehavior.GetHerdAdjustedDestination()`を呼び出す設計だったが、`HerdBehavior`自体がまだ実装されていなかった | ✅解決済み。結合（Cohesion）・分離（Separation）を計算する`HerdBehavior`を新規実装 |
-| #015 | 動物に接近してプロンプトが表示されている間、Aボタンを押す前でもプレイヤーが自由に動けてしまう | 移動ロックは憑依演出シーケンス開始後にしか行っておらず、接近〜プロンプト表示の段階では`CharacterController`が有効なままだった | ✅解決済み。`AnimalViewSwitch.Update()`で射程内（`interactionDistance`以内）にいる間は演出シーケンスの開始前でも`playerController.enabled`を`false`にし、射程外に出た時点（かつ演出中でない場合）に再度有効化するよう修正 |
+| #005 | HUDのCanvasがVRで頭を動かしても追従しない | `viewpoint`にカメラの子ではなく`OVRCameraRig`ルートを参照していた（回転が伝わらない） | 解決済み。`CenterEyeAnchor`を直接参照し、`HUDFollowViewpoint`をカメラの子として付け替える方式に変更 |
+| #006 | 自動移動（`VRMovement`）が終了地点を通過してしまう | 1フレームの移動量が残り距離より大きい場合、目的地を追い越していた | 解決済み。1フレームの移動量を残り距離でクランプし、到達判定時に座標を最終的にピッタリ合わせる処理を追加 |
+| #007 | 自動移動の終着点で高さ(Y座標)が意図通りにならない・落下する | 当初は水平移動のみで高さを重力任せにしており、Character ControllerのCenter/Heightのオフセットも考慮していなかった | 解決済み。transform.positionを直接3軸制御する方式に統一し、開始・終了地点のYがそのまま反映されるよう変更（詳細は第27章） |
+| #008 | 自動移動の到着直後に「ストン」と落下する／開始直後にも同様の現象が起きる | `CharacterController.isGrounded`はMove()呼び出し後でないと正しく判定されず、起動直後や自動移動終了直後に一瞬「浮いている」と誤判定され、重力が過剰に加算されていた | 解決済み。`Start()`時に小さく下方向へMove()して初期接地判定を正しくする処理と、自動移動終了時に`verticalVelocity`をリセットする処理を追加 |
+| #009 | 自動移動の到着後、その場から一切動けなくなる | transform.positionを直接動かす方式にしたことで衝突判定を経由せず、境界条件次第でCharacter Controllerのカプセルが地形にわずかにめり込むケースがあった | 解決済み。到着直後に`Physics.OverlapCapsule` + `Physics.ComputePenetration`でめり込みを検出し、Skin Width以上のめり込みだけを自動的に押し出す処理を追加（正常な接地は誤って押し出さないよう除外） |
+| #010 | Quest実機で、実際に描画される前にキャラクターが動き出してしまう | `Start()`の時点ではOVRのHMDトラッキング・VRフォーカスがまだ確立しておらず、その状態でCharacterController.Move()が呼ばれていた | 解決済み。`OVRManager.instance.isHmdPresent`と`OVRManager.hasVrFocus`の両方が揃うまで待機するコルーチンを追加し、揃った後も追加の待機時間を設けてから自動移動を開始するよう変更 |
+| #011 | 憑依演出アニメーションが再生されない | ①AnimatorのState間の遷移が「roar → Any State」という逆方向に組まれており「Any State → roar」の遷移が存在しなかった／②`possessionIntroClip`(AnimationClip直接指定欄)に誤って通常のClipが設定されており、レガシーAnimationコンポーネントでの再生が優先されてLegacy未マークの警告が出ていた | 解決済み。Animatorの遷移方向を修正し、Trigger方式とClip方式の優先順位を明確化（Clip未設定ならTrigger方式にフォールバック） |
+| #012 | Animatorが複数アタッチされている動物で、意図しない方が使われる | `GetComponentInChildren<Animator>()`は最初に見つかった1つを返すだけで、複数ある場合にどちらが取れるか保証されない | 解決済み。攻撃用・演出用それぞれのAnimatorをInspectorで直接アタッチする方式に変更し、未設定時のみ自動取得にフォールバックするよう修正 |
+| #013 | HUDのパネル切り替えが瞬間的でチープに見える | 全パネルが`SetActive(true/false)`による瞬時切り替えのみだった | 解決済み。CanvasGroupのalphaをコルーチンでフェードさせる共通ヘルパーを実装し、既存の呼び出しコードを変更せずに全パネルの表示/非表示を動的なフェードに置き換え |
+| #014 | 群れを作る動物の徘徊先が群れ補正されない | `AnimalIdleBehavior`は`HerdBehavior.GetHerdAdjustedDestination()`を呼び出す設計だったが、`HerdBehavior`自体がまだ実装されていなかった | 解決済み。結合（Cohesion）・分離（Separation）を計算する`HerdBehavior`を新規実装 |
+| #015 | 動物に接近してプロンプトが表示されている間、Aボタンを押す前でもプレイヤーが自由に動けてしまう | 移動ロックは憑依演出シーケンス開始後にしか行っておらず、接近〜プロンプト表示の段階では`CharacterController`が有効なままだった | 解決済み。`AnimalViewSwitch.Update()`で射程内（`interactionDistance`以内）にいる間は演出シーケンスの開始前でも`playerController.enabled`を`false`にし、射程外に出た時点（かつ演出中でない場合）に再度有効化するよう修正 |
 
 ---
 
