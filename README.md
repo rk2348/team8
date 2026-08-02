@@ -719,8 +719,23 @@ Hackit2026の3日間の開催期間（実質開発時間：約16.5時間）で�
 | 散策中BGM |  |  |  |
 | 自然・動物[1] | 効果音ラボ | https://soundeffect-lab.info/sound/animal/ | 利用規約に基づき使用／クレジット表記：不要 |
 | 144 ロイヤリティフリーの tiger 効果音 | pixabay | https://pixabay.com/ja/sound-effects/search/tiger/ | 利用規約に基づき使用／クレジット表記：不要 |
-| 虎01 | 魔王魂 | https://maou.audio/se_voice_tiger01/ |  |
-|  |  |  |  |
+| 虎01 | 魔王魂 | https://maou.audio/se_voice_tiger01/ | 利用規約に基づき使用／クレジット表記：必要（例：音楽：魔王魂） |
+| deer baby calling for mama | pixabay | https://pixabay.com/ja/sound-effects/%E8%87%AA%E7%84%B6-deer-baby-calling-for-mama-233035/ | 利用規約に基づき使用／クレジット表記：不要 |
+| The call of Red Stag_Animal Sound | pixabay | https://pixabay.com/ja/sound-effects/%E8%87%AA%E7%84%B6-the-call-of-red-stag-animal-sound-145885/ | 利用規約に基づき使用／クレジット表記：不要 |
+| 走る足音 | 効果音ラボ | https://soundeffect-lab.info/sound/search.php?s=%E8%B5%B0%E3%82%8B | 利用規約に基づき使用／クレジット表記：不要 |
+| 心音 | 効果音ラボ | https://soundeffect-lab.info/sound/search.php?s=%E5%BF%83%E9%9F%B3 | 利用規約に基づき使用／クレジット表記：不要 |
+| 心拍 | OtoLogic | https://otologic.jp/free/se/heartbeat01.html#google_vignette | 利用規約に基づき使用／クレジット表記：必要 |
+| 警告音 | OtoLogic | https://otologic.jp/free/se/warning01.html | 利用規約に基づき使用／クレジット表記：必要 |
+| 肉を食べる | 効果音ラボ | https://soundeffect-lab.info/sound/search.php?s=%E8%82%89%E3%82%92%E9%A3%9F%E3%81%B9%E3%82%8B | 利用規約に基づき使用／クレジット表記：不要 |
+| 嚙みつく | 効果音ラボ | https://soundeffect-lab.info/sound/search.php?s=%E5%99%9B%E3%81%BF%E3%81%A4%E3%81%8F | 利用規約に基づき使用／クレジット表記：不要 |
+| モーション・食べる | OtoLogic | https://otologic.jp/free/se/motion-eating01.html#google_vignette | 利用規約に基づき使用／クレジット表記：必要 |
+| 嚙みつく音 | DOVA-SYNDROME | https://dova-s.jp/se/detail/1009 | 利用規約に基づき使用／クレジット表記：不要 |
+| 鳥 | VSQ puls+ | https://vsq.co.jp/plus/sound/category_sub/nature/ | 利用規約に基づき使用／クレジット表記：不要 |
+| サバンナの狩人 | DOVA-SYNDROME | https://dova-s.jp/bgm/detail/21484 |  利用規約に基づき使用／クレジット表記：不要 |
+| サバンナの夜明け | DOVA-SYNDROME | https://dova-s.jp/bgm/detail/11820 |  利用規約に基づき使用／クレジット表記：不要 |
+| Logo African Savanna (Royalty Free Music) | pixabay | https://pixabay.com/ja/sound-effects/%E3%83%9F%E3%83%A5%E3%83%BC%E3%82%B8%E3%82%AB%E3%83%AB-logo-african-savanna-royalty-free-music-490737/ | 利用規約に基づき使用／クレジット表記：不要 |
+| Savanna (8 sec edit) | pixabay | https://pixabay.com/ja/sound-effects/savanna-8-sec-edit-472609/ | 利用規約に基づき使用／クレジット表記：不要 |
+
 
 ### フォント
 
