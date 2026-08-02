@@ -1015,168 +1015,111 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ObjectMover
   route:
   - point: {fileID: 1143497304}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 275416016}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 1020482617}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 1038023418}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 385363552}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 1128853737}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 762526482}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 184974811}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 658393982}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 1168265069}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 586002993}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 586983941}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 1056114048}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 1252056628}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 1971240423}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 1716476815}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 877137406}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 713210999}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 1059426554}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   - point: {fileID: 557743488}
-    speed: 2
     waitTime: 0
-    vibrate: 0
-    vibrationIntensity: 0
     enableSE: 0
     seClips: []
     loopSE: 0
   loop: 0
+  moveSpeed: 30
+  useSmoothCurve: 1
+  stopFullyAtWaitPoints: 1
   lookAtTarget: 1
-  rotationSpeed: 10
+  rotationSpeed: 8
 --- !u!82 &1113689788
 AudioSource:
   m_ObjectHideFlags: 0

@@ -12,17 +12,8 @@ public class ObjectMover : MonoBehaviour
         [Tooltip("目的地のTransform")]
         public Transform point;
 
-        [Tooltip("この区間の移動速度")]
-        [Min(0.1f)] public float speed = 5.0f;
-
         [Tooltip("到着後の待機時間（秒）")]
         [Min(0f)] public float waitTime = 1.0f;
-
-        [Space(10), Header("--- 振動設定 ---")]
-        [Tooltip("この区間の移動中に振動するかどうか")]
-        public bool vibrate = false;
-        [Tooltip("振動の強さ（揺れ幅）")]
-        public float vibrationIntensity = 0.05f;
 
         [Space(10), Header("--- SE(効果音)設定 ---")]
         [Tooltip("到着時にSEを再生するかどうか")]
@@ -31,7 +22,6 @@ public class ObjectMover : MonoBehaviour
         public List<AudioClip> seClips = new List<AudioClip>();
         [Tooltip("ループ再生するかどうか")]
         public bool loopSE = false;
-
     }
 
     [Header("ルート設定")]
@@ -40,10 +30,20 @@ public class ObjectMover : MonoBehaviour
     [SerializeField, Tooltip("最後まで行ったら最初に戻るか")]
     private bool loop = false;
 
+    [Header("移動速度の設定(全区間共通)")]
+    [SerializeField, Tooltip("全区間で共通して使う移動速度(メートル/秒)")]
+    [Min(0.1f)] private float moveSpeed = 5.0f;
+
+    [Header("曲線移動の設定")]
+    [SerializeField, Tooltip("ONにするとWaypoint間を滑らかな曲線(Catmull-Romスプライン)で移動する。OFFなら従来通りの直線移動")]
+    private bool useSmoothCurve = true;
+    [SerializeField, Tooltip("待機(waitTime)がある区間の前後だけは、曲線を使わず一旦完全停止させる")]
+    private bool stopFullyAtWaitPoints = true;
+
     [Header("向きの設定")]
     [SerializeField, Tooltip("進行方向を向くかどうか")]
     private bool lookAtTarget = true;
-    [SerializeField, Tooltip("振り向くスピード")]
+    [SerializeField, Tooltip("向きを合わせる速さ。大きいほど進行方向にきびきび追従する")]
     private float rotationSpeed = 10.0f;
 
     // 内部ステータス
@@ -53,9 +53,17 @@ public class ObjectMover : MonoBehaviour
     // 複数のAudioSourceを管理するリスト
     private List<AudioSource> _audioSources = new List<AudioSource>();
 
+    /// <summary>
+    /// 全区間共通の移動速度。実行中に変更したい場合はこのプロパティを使う。
+    /// </summary>
+    public float MoveSpeed
+    {
+        get => moveSpeed;
+        set => moveSpeed = Mathf.Max(0.1f, value);
+    }
+
     void Awake()
     {
-        // 最初にアタッチされているAudioSourceを取得してリストに追加
         AudioSource initialSource = GetComponent<AudioSource>();
         if (initialSource != null)
         {
@@ -71,12 +79,12 @@ public class ObjectMover : MonoBehaviour
             Debug.LogWarning($"{gameObject.name}: Waypointが設定されていません。");
             return;
         }
-        // 移動開始
         _pathCoroutine = StartCoroutine(FollowPathRoutine());
     }
 
     /// <summary>
-    /// メインの移動コルーチン
+    /// メインの移動コルーチン。
+    /// useSmoothCurveがONの場合、待機時間が無い区間同士は速度を落とさず滑らかに繋げて曲がる。
     /// </summary>
     private IEnumerator FollowPathRoutine()
     {
@@ -89,30 +97,37 @@ public class ObjectMover : MonoBehaviour
 
             if (wp.point != null)
             {
-                // 1. 移動処理
-                yield return StartCoroutine(MoveToTarget(wp, currentLogicPosition, (newPos) => currentLogicPosition = newPos));
+                Vector3 prevPoint = currentIndex > 0 && route[currentIndex - 1].point != null
+                    ? route[currentIndex - 1].point.position
+                    : currentLogicPosition;
+                Vector3 nextPoint = (currentIndex + 1 < route.Count && route[currentIndex + 1].point != null)
+                    ? route[currentIndex + 1].point.position
+                    : wp.point.position;
 
-                // 2. 到着時の処理（音、イベント）
+                yield return StartCoroutine(MoveToTarget(
+                    wp,
+                    currentLogicPosition,
+                    prevPoint,
+                    nextPoint,
+                    (newPos) => currentLogicPosition = newPos));
+
                 HandleArrivalActions(wp);
 
-                // 3. 待機処理（ポーズ対応）
                 if (wp.waitTime > 0)
                 {
                     yield return StartCoroutine(WaitWithPause(wp.waitTime));
                 }
             }
 
-            // 次のポイントへ
             currentIndex++;
             if (currentIndex >= route.Count)
             {
                 if (loop)
                 {
-                    currentIndex = 0; // ループ設定なら最初に戻る
+                    currentIndex = 0;
                 }
                 else
                 {
-                    // ゴール時の後処理
                     ResetMedia();
                     yield break;
                 }
@@ -121,62 +136,90 @@ public class ObjectMover : MonoBehaviour
     }
 
     /// <summary>
-    /// 目的地への移動処理を行うサブコルーチン
+    /// 目的地への移動処理。useSmoothCurveがONなら、前後の区間も考慮した
+    /// Catmull-Rom補間でカーブしながら進む。速度は全区間共通のmoveSpeedを使う。
     /// </summary>
-    private IEnumerator MoveToTarget(Waypoint wp, Vector3 startLogicPos, System.Action<Vector3> onUpdateLogicPos)
+    private IEnumerator MoveToTarget(Waypoint wp, Vector3 startPos, Vector3 prevPoint, Vector3 nextPoint, System.Action<Vector3> onUpdateLogicPos)
     {
-        Vector3 currentLogicPosition = startLogicPos;
+        Vector3 endPos = wp.point.position;
+        float distance = Vector3.Distance(startPos, endPos);
+        if (distance < 0.001f)
+        {
+            onUpdateLogicPos?.Invoke(endPos);
+            yield break;
+        }
 
-        while (Vector3.Distance(currentLogicPosition, wp.point.position) > 0.01f)
+        float duration = distance / moveSpeed;
+        float elapsed = 0f;
+
+        // Catmull-Rom用の制御点(始点の前・終点の後ろ)
+        Vector3 p0 = prevPoint;
+        Vector3 p1 = startPos;
+        Vector3 p2 = endPos;
+        Vector3 p3 = nextPoint;
+
+        while (elapsed < duration)
         {
             yield return new WaitUntil(() => !_isPaused);
 
-            // 論理的な位置を更新
-            currentLogicPosition = Vector3.MoveTowards(currentLogicPosition, wp.point.position, wp.speed * Time.deltaTime);
-            onUpdateLogicPos?.Invoke(currentLogicPosition); // 親の変数を更新
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
 
-            // 振動と位置の反映
-            if (wp.vibrate)
-            {
-                Vector3 vibrationOffset = Random.insideUnitSphere * wp.vibrationIntensity;
-                transform.position = currentLogicPosition + vibrationOffset;
-            }
-            else
-            {
-                transform.position = currentLogicPosition;
-            }
+            Vector3 targetPosition = useSmoothCurve
+                ? CatmullRom(p0, p1, p2, p3, t)
+                : Vector3.Lerp(p1, p2, t);
 
-            // 向きの更新
+            transform.position = targetPosition;
+
             if (lookAtTarget)
             {
-                Vector3 direction = (wp.point.position - currentLogicPosition).normalized;
-                if (direction != Vector3.zero)
+                // ほんの少し先の点を見ることで、カーブの接線方向に自然に向きを合わせる
+                float lookAheadT = Mathf.Clamp01(t + 0.05f);
+                Vector3 lookAheadPos = useSmoothCurve
+                    ? CatmullRom(p0, p1, p2, p3, lookAheadT)
+                    : Vector3.Lerp(p1, p2, lookAheadT);
+
+                Vector3 direction = (lookAheadPos - targetPosition);
+                if (direction.sqrMagnitude > 0.0001f)
                 {
-                    Quaternion targetRotation = Quaternion.LookRotation(direction);
+                    Quaternion targetRotation = Quaternion.LookRotation(direction.normalized);
                     transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
                 }
             }
 
+            onUpdateLogicPos?.Invoke(targetPosition);
+
             yield return null;
         }
 
-        // 最終的な位置合わせ
-        transform.position = wp.point.position;
-        onUpdateLogicPos?.Invoke(wp.point.position);
+        transform.position = endPos;
+        onUpdateLogicPos?.Invoke(endPos);
     }
 
     /// <summary>
-    /// ポイント到着時の各種アクションを実行
+    /// Catmull-Romスプライン補間。p1→p2の間を、前後の制御点p0・p3を考慮して滑らかに補間する。
+    /// 折れ線ではなく曲線として経路をつなぐことで、Waypoint通過時のカクつきを解消する。
     /// </summary>
+    private static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
+    {
+        float t2 = t * t;
+        float t3 = t2 * t;
+
+        return 0.5f * (
+            (2f * p1) +
+            (-p0 + p2) * t +
+            (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
+            (-p0 + 3f * p1 - 3f * p2 + p3) * t3
+        );
+    }
+
     private void HandleArrivalActions(Waypoint wp)
     {
-        // 現在鳴っている全てのSEを停止
         foreach (var source in _audioSources)
         {
             if (source.isPlaying) source.Stop();
         }
 
-        // 複数のSEを同時に再生
         if (wp.enableSE && wp.seClips != null && wp.seClips.Count > 0)
         {
             for (int i = 0; i < wp.seClips.Count; i++)
@@ -184,7 +227,6 @@ public class ObjectMover : MonoBehaviour
                 AudioClip clip = wp.seClips[i];
                 if (clip == null) continue;
 
-                // 必要な数だけAudioSourceを動的に割り当て/生成
                 AudioSource source = GetOrCreateAudioSource(i);
                 source.clip = clip;
                 source.loop = wp.loopSE;
@@ -193,27 +235,19 @@ public class ObjectMover : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 必要なインデックスのAudioSourceを取得、足りなければ自動生成する
-    /// </summary>
     private AudioSource GetOrCreateAudioSource(int index)
     {
-        // 既に生成済みのAudioSourceがあればそれを返す
         if (index < _audioSources.Count)
         {
             return _audioSources[index];
         }
 
-        // 足りない場合は新しくコンポーネントを追加してリストに登録する
         AudioSource newSource = gameObject.AddComponent<AudioSource>();
         newSource.playOnAwake = false;
         _audioSources.Add(newSource);
         return newSource;
     }
 
-    /// <summary>
-    /// ポーズ機能を考慮した待機コルーチン
-    /// </summary>
     private IEnumerator WaitWithPause(float waitTime)
     {
         float timer = 0f;
@@ -225,24 +259,17 @@ public class ObjectMover : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ループ終了時などに音声をリセットする
-    /// </summary>
     private void ResetMedia()
     {
-        // 全ての音声を停止
         foreach (var source in _audioSources)
         {
             if (source.isPlaying) source.Stop();
         }
     }
 
-    // --- 外部からの制御用API ---
-
     public void PauseMovement()
     {
         _isPaused = true;
-        // 再生中の全ての音声を一時停止
         foreach (var source in _audioSources)
         {
             if (source.isPlaying) source.Pause();
@@ -252,19 +279,16 @@ public class ObjectMover : MonoBehaviour
     public void ResumeMovement()
     {
         _isPaused = false;
-        // 全ての音声の一時停止を解除
         foreach (var source in _audioSources)
         {
             source.UnPause();
         }
     }
 
-    // --- Sceneビューでの可視化 ---
     private void OnDrawGizmos()
     {
         if (route == null || route.Count < 2) return;
 
-        // 変更箇所：通常のパスの線を赤色にする
         Gizmos.color = Color.red;
         for (int i = 0; i < route.Count - 1; i++)
         {
@@ -275,16 +299,13 @@ public class ObjectMover : MonoBehaviour
             }
         }
 
-        // 最後のポイントの球を描画
         if (route[route.Count - 1].point != null)
         {
             Gizmos.DrawWireSphere(route[route.Count - 1].point.position, 0.2f);
         }
 
-        // ループする場合は終点と始点を繋ぐ
         if (loop && route[route.Count - 1].point != null && route[0].point != null)
         {
-            // 変更箇所：ループの線も赤色にする
             Gizmos.color = Color.red;
             Gizmos.DrawLine(route[route.Count - 1].point.position, route[0].point.position);
         }
