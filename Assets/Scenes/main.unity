@@ -1751,9 +1751,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HUDFollowViewpoint
   viewpoint: {fileID: 1974098017}
   offset: {x: 0, y: 0.5, z: 4}
-  positionFollowSpeed: 2
-  rotationFollowSpeed: 2
-  lockPitchAndRoll: 1
+  positionFollowSpeed: 4
+  rotationFollowSpeed: 10
+  lockPitchAndRoll: 0
 --- !u!114 &1771559846
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1971,7 +1971,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VRMovement
   speed: 3
-  dashSpeed: 7
+  dashSpeed: 9
   dashTriggerThreshold: 0.1
   head: {fileID: 1974098017}
 --- !u!143 &1877603667
