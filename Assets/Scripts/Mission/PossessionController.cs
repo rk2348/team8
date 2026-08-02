@@ -1,92 +1,254 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
+/// <summary>
+/// 憑依中のHUD管理。
+/// 憑依開始時はまずミッションパネルを表示し、一定時間後に自動で
+/// 体力・空腹・危険度の3パネル(ステータス)表示へ切り替わる。
+/// Xボタンでいつでもミッションを見返せ(その間ステータスは隠れる)、
+/// 同じXボタンでステータス表示に戻る。
+/// Aボタンはステータス全体(3パネル)の表示/非表示を切り替える。
+/// ミッション達成時は完了パネル→スコアパネル(合計のみ)の順で自動表示する。
+/// </summary>
 public class PossessionController : MonoBehaviour
 {
-    [Header("パネル本体（憑依中だけ表示するオブジェクト）")]
+    [Header("ミッションパネル")]
     public GameObject missionPanel;
-    public GameObject timeOfDayPanel;
-    public GameObject locationPanel;
+    [Tooltip("憑依開始時、ミッションパネルを表示し続ける秒数(経過後は自動でステータス表示に切り替わる)")]
+    public float missionDisplayDuration = 4f;
+
+    [Header("ミッション完了パネル")]
+    public GameObject missionCompletePanel;
+    [Tooltip("完了パネルを表示し続ける秒数(経過後は自動でスコアパネルへ切り替わる)")]
+    public float missionCompleteDisplayDuration = 2.5f;
+
+    [Header("スコアパネル")]
+    public GameObject scorePanel;
+    [Tooltip("合計スコアの表示")]
+    public TextMeshProUGUI totalScoreText;
+    [Tooltip("表示フォーマット。{0}にスコアの数値が入る")]
+    public string totalScoreFormat = "{0}";
+
+    [Header("パネル本体（憑依中だけ表示するオブジェクト）")]
     public GameObject healthPanel;
+    public GameObject hungerPanel;
+    public GameObject dangerPanel;
 
-    [Header("ミッションパネルの中身")]
-    public TextMeshProUGUI missionText;
+    [Header("体力パネルの中身")]
+    public Slider healthSlider;
 
-    [Header("時間帯パネルの中身")]
-    public TextMeshProUGUI timeOfDayText;
+    [Header("空腹パネルの中身")]
+    public Slider hungerSlider;
 
-    [Header("場所パネルの中身")]
-    public TextMeshProUGUI locationText;
+    [Header("危険度パネルの中身")]
+    public Slider dangerSlider;
+    [Tooltip("危険度が高いときにスライダーのFill色を変える場合に使用")]
+    public Image dangerFillImage;
+    public Color dangerLowColor = Color.white;
+    public Color dangerHighColor = Color.red;
+    [Range(0f, 1f)] public float dangerHighThreshold = 0.7f;
 
-    [Header("体力ゲージパネルの中身")]
-    //public Slider healthSlider;
-    public TextMeshProUGUI healthValueText;
+    [Header("操作案内パネル(憑依前・憑依中で表示を切り替え)")]
+    [Tooltip("憑依前、接近時に表示するパネル")]
+    public GameObject possessPromptPanel;
+    [Tooltip("憑依中に表示するパネル(操作案内)")]
+    public GameObject possessingActionPanel;
+
+    private bool panelsVisible = true;
+    private bool missionViewActive = false;
+    private Coroutine autoSwitchCoroutine;
+    private Coroutine missionCompleteCoroutine;
 
     void Awake()
     {
-        // 初期状態は非表示にしておく
-        SetAllPanelsActive(false);
+        SetStatPanelsActive(false);
+        SetMissionPanelActive(false);
+        SetMissionCompletePanelActive(false);
+        SetScorePanelActive(false);
+        HideActionPanels();
     }
 
-    /// <summary>
-    /// 憑依開始時に呼び出す。4パネルを表示し、初期値をセットする。
-    /// </summary>
-    public void ShowHUD(string missionMessage, string locationName, float currentHealth, float maxHealth)
+    public void ShowHUD(float currentHealth, float maxHealth, float currentHunger, float maxHunger, float dangerLevel)
     {
-        SetAllPanelsActive(true);
+        UpdateHealth(currentHealth, maxHealth);
+        UpdateHunger(currentHunger, maxHunger);
+        UpdateDanger(dangerLevel);
 
-        if (missionText != null) missionText.text = missionMessage;
-        if (locationText != null) locationText.text = locationName;
+        panelsVisible = true;
 
-        //UpdateHealth(currentHealth, maxHealth);
+        SetMissionCompletePanelActive(false);
+        SetScorePanelActive(false);
+
+        missionViewActive = true;
+        RefreshVisibility();
+
+        ShowPossessingActionPanel();
+
+        if (autoSwitchCoroutine != null) StopCoroutine(autoSwitchCoroutine);
+        autoSwitchCoroutine = StartCoroutine(AutoSwitchToStats());
     }
 
-    /// <summary>
-    /// 憑依解除時に呼び出す。4パネルを非表示にする。
-    /// </summary>
+    private IEnumerator AutoSwitchToStats()
+    {
+        yield return new WaitForSeconds(missionDisplayDuration);
+        missionViewActive = false;
+        RefreshVisibility();
+        autoSwitchCoroutine = null;
+    }
+
     public void HideHUD()
     {
-        SetAllPanelsActive(false);
+        if (autoSwitchCoroutine != null)
+        {
+            StopCoroutine(autoSwitchCoroutine);
+            autoSwitchCoroutine = null;
+        }
+        if (missionCompleteCoroutine != null)
+        {
+            StopCoroutine(missionCompleteCoroutine);
+            missionCompleteCoroutine = null;
+        }
+
+        panelsVisible = true;
+        missionViewActive = false;
+
+        SetStatPanelsActive(false);
+        SetMissionPanelActive(false);
+        SetMissionCompletePanelActive(false);
+        SetScorePanelActive(false);
+        HideActionPanels();
+    }
+
+    public void TogglePanels()
+    {
+        panelsVisible = !panelsVisible;
+        RefreshVisibility();
+    }
+
+    public void ToggleMissionView()
+    {
+        if (autoSwitchCoroutine != null)
+        {
+            StopCoroutine(autoSwitchCoroutine);
+            autoSwitchCoroutine = null;
+        }
+
+        missionViewActive = !missionViewActive;
+        RefreshVisibility();
     }
 
     /// <summary>
-    /// 体力ゲージを更新する（ダメージや回復のたびに呼び出す）
+    /// ミッション達成時に呼び出す。ステータス・ミッションパネルを隠し、
+    /// 「ミッション完了」パネル→一定時間後に自動で合計スコアパネルへ切り替える。
     /// </summary>
-    /*public void UpdateHealth(float currentHealth, float maxHealth)
+    public void ShowMissionComplete(int totalScore)
+    {
+        if (autoSwitchCoroutine != null)
+        {
+            StopCoroutine(autoSwitchCoroutine);
+            autoSwitchCoroutine = null;
+        }
+
+        missionViewActive = false;
+        SetStatPanelsActive(false);
+        SetMissionPanelActive(false);
+        HideActionPanels();
+
+        SetMissionCompletePanelActive(true);
+        SetScorePanelActive(false);
+
+        if (totalScoreText != null) totalScoreText.text = string.Format(totalScoreFormat, totalScore);
+
+        if (missionCompleteCoroutine != null) StopCoroutine(missionCompleteCoroutine);
+        missionCompleteCoroutine = StartCoroutine(AutoSwitchToScore());
+    }
+
+    private IEnumerator AutoSwitchToScore()
+    {
+        yield return new WaitForSeconds(missionCompleteDisplayDuration);
+        SetMissionCompletePanelActive(false);
+        SetScorePanelActive(true);
+        missionCompleteCoroutine = null;
+    }
+
+    private void RefreshVisibility()
+    {
+        SetMissionPanelActive(missionViewActive);
+        SetStatPanelsActive(!missionViewActive && panelsVisible);
+    }
+
+    public void ShowPossessPrompt()
+    {
+        if (possessPromptPanel != null) possessPromptPanel.SetActive(true);
+        if (possessingActionPanel != null) possessingActionPanel.SetActive(false);
+    }
+
+    public void ShowPossessingActionPanel()
+    {
+        if (possessPromptPanel != null) possessPromptPanel.SetActive(false);
+        if (possessingActionPanel != null) possessingActionPanel.SetActive(true);
+    }
+
+    public void HideActionPanels()
+    {
+        if (possessPromptPanel != null) possessPromptPanel.SetActive(false);
+        if (possessingActionPanel != null) possessingActionPanel.SetActive(false);
+    }
+
+    public void UpdateHealth(float currentHealth, float maxHealth)
     {
         if (healthSlider != null)
         {
             healthSlider.maxValue = maxHealth;
             healthSlider.value = currentHealth;
         }
-        if (healthValueText != null)
+    }
+
+    public void UpdateHunger(float currentHunger, float maxHunger)
+    {
+        if (hungerSlider != null)
         {
-            healthValueText.text = $"{Mathf.CeilToInt(currentHealth)} / {Mathf.CeilToInt(maxHealth)}";
+            hungerSlider.maxValue = maxHunger;
+            hungerSlider.value = currentHunger;
         }
-    }*/
-
-    /// <summary>
-    /// ミッション内容だけを差し替えたいとき用
-    /// </summary>
-    public void UpdateMission(string missionMessage)
-    {
-        if (missionText != null) missionText.text = missionMessage;
     }
 
-    /// <summary>
-    /// 現在地表示だけを差し替えたいとき用
-    /// </summary>
-    public void UpdateLocation(string locationName)
+    public void UpdateDanger(float dangerLevel01)
     {
-        if (locationText != null) locationText.text = locationName;
+        float clamped = Mathf.Clamp01(dangerLevel01);
+
+        if (dangerSlider != null)
+        {
+            dangerSlider.maxValue = 1f;
+            dangerSlider.value = clamped;
+        }
+        if (dangerFillImage != null)
+        {
+            dangerFillImage.color = clamped >= dangerHighThreshold ? dangerHighColor : dangerLowColor;
+        }
     }
 
-    private void SetAllPanelsActive(bool active)
+    private void SetStatPanelsActive(bool active)
+    {
+        if (healthPanel != null) healthPanel.SetActive(active);
+        if (hungerPanel != null) hungerPanel.SetActive(active);
+        if (dangerPanel != null) dangerPanel.SetActive(active);
+    }
+
+    private void SetMissionPanelActive(bool active)
     {
         if (missionPanel != null) missionPanel.SetActive(active);
-        if (timeOfDayPanel != null) timeOfDayPanel.SetActive(active);
-        if (locationPanel != null) locationPanel.SetActive(active);
-        if (healthPanel != null) healthPanel.SetActive(active);
+    }
+
+    private void SetMissionCompletePanelActive(bool active)
+    {
+        if (missionCompletePanel != null) missionCompletePanel.SetActive(active);
+    }
+
+    private void SetScorePanelActive(bool active)
+    {
+        if (scorePanel != null) scorePanel.SetActive(active);
     }
 }

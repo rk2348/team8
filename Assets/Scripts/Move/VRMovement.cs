@@ -4,8 +4,12 @@ using UnityEngine;
 public class VRMovement : MonoBehaviour
 {
     [Header("移動設定")]
-    [Tooltip("移動速度")]
+    [Tooltip("通常時の移動速度")]
     public float speed = 3.0f;
+    [Tooltip("左人差し指トリガーを押している間のダッシュ速度")]
+    public float dashSpeed = 7.0f;
+    [Tooltip("トリガーをどこまで押し込んだらダッシュとみなすか(0?1)")]
+    [Range(0f, 1f)] public float dashTriggerThreshold = 0.1f;
 
     [Header("参照")]
     [Tooltip("HMDのカメラ（CenterEyeAnchorなど）をアタッチ")]
@@ -17,40 +21,28 @@ public class VRMovement : MonoBehaviour
 
     void Start()
     {
-        // アタッチされているCharacterControllerを取得
         characterController = GetComponent<CharacterController>();
     }
 
     void Update()
     {
-        // 左スティックの入力を取得 (X: 左右, Y: 前後)
         Vector2 input = OVRInput.Get(OVRInput.RawAxis2D.LThumbstick);
 
-        // カメラ（頭）の向いている方向を基準に移動方向を計算
         Vector3 forward = head.forward;
         Vector3 right = head.right;
-
-        // Y軸（上下）の傾きを無視して水平移動のみにする
         forward.y = 0;
         right.y = 0;
         forward.Normalize();
         right.Normalize();
 
-        // 入力値と方向を掛け合わせて移動ベクトルを作成
         Vector3 moveDirection = forward * input.y + right * input.x;
 
-        // 重力の処理（宙に浮かないようにする）
-        /*if (characterController.isGrounded)
-        {
-            verticalVelocity = -0.5f; // 接地を安定させるための微小な下向きの力
-        }
-        else
-        {
-            verticalVelocity += gravity * Time.deltaTime;
-        }*/
+        // 左人差し指トリガーの押し込み量を取得し、閾値を超えていればダッシュ速度を使う
+        float triggerValue = OVRInput.Get(OVRInput.RawAxis1D.LIndexTrigger);
+        bool isDashing = triggerValue >= dashTriggerThreshold;
+        float currentSpeed = isDashing ? dashSpeed : speed;
 
-        // 最終的な移動量を計算して適用
-        Vector3 finalMovement = (moveDirection * speed) + (Vector3.up * verticalVelocity);
+        Vector3 finalMovement = (moveDirection * currentSpeed) + (Vector3.up * verticalVelocity);
         characterController.Move(finalMovement * Time.deltaTime);
     }
 }

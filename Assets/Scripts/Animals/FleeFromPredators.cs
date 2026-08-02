@@ -1,12 +1,11 @@
 using System.Collections.Generic;
-using UnityEditorInternal.VR;
 using UnityEngine;
 using UnityEngine.AI;
 
 /// <summary>
 /// シーン内の"Predator"コンポーネントを持つ全ての捕食者を警戒し、
 /// 一定距離以内に近づくと最も近い捕食者から逃げる汎用スクリプト。
-/// シカ、ウサギ、シマウマなど、被食者となる動物すべてに使い回せる。
+/// 牛・馬・シマウマ・シカ・ウサギ・ゾウなど、被食者となる動物すべてに使い回せる。
 /// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 public class FleeFromPredators : MonoBehaviour
@@ -28,15 +27,27 @@ public class FleeFromPredators : MonoBehaviour
     [Header("アニメーションの設定")]
     [Tooltip("この動物のAnimatorコンポーネント")]
     public Animator animator;
-    [Tooltip("Animator Controller内の、逃走中を示すBoolパラメータ名")]
-    public string isRunningParam = "IsRunning";
+    [Tooltip("逃走開始時に発火するTrigger名")]
+    public string runTrigger = "Run";
+    [Tooltip("逃走終了時に発火するTrigger名(通常状態へ戻す)")]
+    public string idleTrigger = "Idle";
 
     [Header("状態確認用(読み取り専用)")]
     [SerializeField] private bool isFleeing = false;
     [SerializeField] private Predator currentThreat;
 
-    // 外部(AnimalIdleBehaviorやPredatorAIなど)から現在逃走中かを確認するためのプロパティ
     public bool IsFleeing => isFleeing;
+
+    /// <summary>
+    /// 現在(または直近)の逃走が開始された時刻(Time.time)。逃走したことが一度も無ければ-1。
+    /// スコア計算(憑依?逃走開始までの経過時間の算出)に使用する。
+    /// </summary>
+    public float FleeStartTime { get; private set; } = -1f;
+
+    /// <summary>
+    /// 直近の逃走にかかった時間(秒)。逃走が終わる(または死亡する)たびに確定する。
+    /// </summary>
+    public float LastFleeDuration { get; private set; } = 0f;
 
     private NavMeshAgent agent;
     private float fleeTimer = 0f;
@@ -76,11 +87,12 @@ public class FleeFromPredators : MonoBehaviour
             if (!isFleeing)
             {
                 isFleeing = true;
+                FleeStartTime = Time.time;
                 agent.speed = fleeSpeed;
 
                 if (animator != null)
                 {
-                    animator.SetBool(isRunningParam, true);
+                    animator.SetTrigger(runTrigger);
                 }
             }
 
@@ -138,13 +150,44 @@ public class FleeFromPredators : MonoBehaviour
         if (isFleeing)
         {
             isFleeing = false;
+            ConfirmFleeDuration();
+
             agent.speed = normalSpeed;
             agent.ResetPath();
 
             if (animator != null)
             {
-                animator.SetBool(isRunningParam, false);
+                animator.SetTrigger(idleTrigger);
             }
+        }
+    }
+
+    private void ConfirmFleeDuration()
+    {
+        if (FleeStartTime >= 0f)
+        {
+            LastFleeDuration = Time.time - FleeStartTime;
+        }
+    }
+
+    /// <summary>
+    /// 捕食されて死亡するときに、AnimalHealth.Kill()から呼び出す。
+    /// 移動のみを止め、逃走時間を確定させる。
+    /// </summary>
+    public void StopForDeath()
+    {
+        if (isFleeing)
+        {
+            ConfirmFleeDuration();
+        }
+
+        isFleeing = false;
+        currentThreat = null;
+
+        if (agent != null && agent.enabled)
+        {
+            agent.isStopped = true;
+            agent.ResetPath();
         }
     }
 

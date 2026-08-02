@@ -62,6 +62,7 @@ public class AnimalIdleBehavior : MonoBehaviour
         {
             herdBehavior = GetComponent<HerdBehavior>();
         }
+        agent.stoppingDistance = 0f; // 到着判定はスクリプト側のarrivalThresholdで一元管理する
     }
 
     void Start()
