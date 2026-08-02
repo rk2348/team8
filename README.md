@@ -18,7 +18,6 @@
 
 ### ■ 世界観・コンテンツ
 6. [主要バイオーム](#6-主要バイオーム)
-7. [アートディレクション・スタイルガイド](#7-アートディレクションスタイルガイド)
 8. [登場動物データ（Animal Data）](#8-登場動物データanimal-data)
 
 ### ■ ゲーム設計
@@ -44,7 +43,6 @@
 24. [開発ロードマップ](#24-開発ロードマップ)
 25. [開発スケジュール・マイルストーン](#25-開発スケジュールマイルストーン)
 26. [チームメンバーと役割（Team & Roles）](#26-チームメンバーと役割team--roles)
-27. [実装状況（Implementation Status）](#27-実装状況implementation-status)
 28. [既知の不具合（Known Issues）](#28-既知の不具合known-issues)
 29. [技術的な工夫と課題解決（Technical Highlights & Problem Solving）](#29-技術的な工夫と課題解決technical-highlights--problem-solving)
 30. [生成AIの活用について（AI Usage）](#30-生成aiの活用についてai-usage)
