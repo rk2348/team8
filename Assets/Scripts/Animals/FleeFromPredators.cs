@@ -1,41 +1,29 @@
 using System.Collections.Generic;
-using UnityEditorInternal.VR;
 using UnityEngine;
 using UnityEngine.AI;
 
-/// <summary>
-/// シーン内の"Predator"コンポーネントを持つ全ての捕食者を警戒し、
-/// 一定距離以内に近づくと最も近い捕食者から逃げる汎用スクリプト。
-/// シカ、ウサギ、シマウマなど、被食者となる動物すべてに使い回せる。
-/// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 public class FleeFromPredators : MonoBehaviour
 {
     [Header("逃走の設定")]
-    [Tooltip("この距離より近づくと逃げ始める(メートル)")]
     public float detectionRadius = 8f;
-    [Tooltip("逃げる際の移動距離(捕食者と反対方向にどれだけ走るか)")]
     public float fleeDistance = 12f;
-    [Tooltip("通常時の移動速度")]
     public float normalSpeed = 2f;
-    [Tooltip("逃走時の移動速度")]
     public float fleeSpeed = 6f;
-    [Tooltip("逃走中に再度目的地を再計算する間隔(秒)")]
     public float fleeUpdateInterval = 0.5f;
-    [Tooltip("捕食者の再探索を行う間隔(秒)。重い処理なので毎フレームは避ける")]
     public float predatorSearchInterval = 1.0f;
 
     [Header("アニメーションの設定")]
-    [Tooltip("この動物のAnimatorコンポーネント")]
     public Animator animator;
-    [Tooltip("Animator Controller内の、逃走中を示すBoolパラメータ名")]
-    public string isRunningParam = "IsRunning";
+    [Tooltip("逃走開始時に発火するTrigger名")]
+    public string runTrigger = "Run";
+    [Tooltip("逃走終了時に発火するTrigger名(通常状態へ戻す)")]
+    public string idleTrigger = "Idle";
 
     [Header("状態確認用(読み取り専用)")]
     [SerializeField] private bool isFleeing = false;
     [SerializeField] private Predator currentThreat;
 
-    // 外部(AnimalIdleBehaviorやPredatorAIなど)から現在逃走中かを確認するためのプロパティ
     public bool IsFleeing => isFleeing;
 
     private NavMeshAgent agent;
@@ -80,7 +68,7 @@ public class FleeFromPredators : MonoBehaviour
 
                 if (animator != null)
                 {
-                    animator.SetBool(isRunningParam, true);
+                    animator.SetTrigger(runTrigger); // Boolではなく、開始した瞬間だけTriggerを発火
                 }
             }
 
@@ -143,8 +131,25 @@ public class FleeFromPredators : MonoBehaviour
 
             if (animator != null)
             {
-                animator.SetBool(isRunningParam, false);
+                animator.SetTrigger(idleTrigger); // Boolではなく、終了した瞬間だけTriggerを発火
             }
+        }
+    }
+
+    /// <summary>
+    /// 捕食されて死亡するときに、AnimalHealth.Kill()から呼び出す。
+    /// 移動のみを止める。AnimatorはTrigger方式になったため、
+    /// 死亡時にRun関連のパラメータをリセットする必要はない。
+    /// </summary>
+    public void StopForDeath()
+    {
+        isFleeing = false;
+        currentThreat = null;
+
+        if (agent != null && agent.enabled)
+        {
+            agent.isStopped = true;
+            agent.ResetPath();
         }
     }
 

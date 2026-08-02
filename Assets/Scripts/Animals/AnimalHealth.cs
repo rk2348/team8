@@ -1,53 +1,69 @@
 using UnityEngine;
 using UnityEngine.AI;
 
-/// <summary>
-/// “®•¨‚ªuE‚³‚ê‚év‚Æ‚«‚Ì‹¤’Êˆ—B‘S‚Ä‚Ì“®•¨(”íHÒE•ßHÒ–â‚í‚¸)‚É•t‚¯‚éB
-/// </summary>
 public class AnimalHealth : MonoBehaviour
 {
-    [Tooltip("€–SƒAƒjƒ[ƒVƒ‡ƒ“‚Ö‘JˆÚ‚³‚¹‚éTriggerƒpƒ‰ƒ[ƒ^–¼")]
+    [Tooltip("æ­»äº¡ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã¸é·ç§»ã•ã›ã‚‹Triggerãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿å(ä¿é™ºã¨ã—ã¦æ®‹ã™)")]
     public string dieTrigger = "Die";
-    [Tooltip("€–SŒãA‰½•b‚ÅƒIƒuƒWƒFƒNƒg‚ğ”ñ•\¦‚É‚·‚é‚©(0ˆÈ‰º‚È‚ç”ñ•\¦‚É‚µ‚È‚¢)")]
+    [Tooltip("Animatorå†…ã®æ­»äº¡StateName(Play()ã§ç›´æ¥æŒ‡å®šã™ã‚‹ãŸã‚ã€Base Layerå†…ã®åå‰ã¨å®Œå…¨ä¸€è‡´ã•ã›ã‚‹)")]
+    public string dieStateName = "die";
+    [Tooltip("æ­»äº¡å¾Œã€ä½•ç§’ã§ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’éè¡¨ç¤ºã«ã™ã‚‹ã‹(0ä»¥ä¸‹ãªã‚‰éè¡¨ç¤ºã«ã—ãªã„)")]
     public float disableDelayAfterDeath = 5f;
 
     public bool IsDead { get; private set; } = false;
 
     private Animator animator;
     private NavMeshAgent agent;
+    private Rigidbody rb;
 
     void Awake()
     {
         animator = GetComponentInChildren<Animator>();
         agent = GetComponent<NavMeshAgent>();
+        rb = GetComponent<Rigidbody>();
     }
 
-    /// <summary>
-    /// •ßHÒ‚©‚çŒÄ‚Î‚ê‚éuE‚³‚ê‚évˆ—B
-    /// </summary>
     public void Kill()
     {
         if (IsDead) return;
         IsDead = true;
 
-        // ‘¼‚ÌˆÚ“®EAIŒnƒXƒNƒŠƒvƒg‚ğ~‚ß‚é
         if (agent != null)
         {
             agent.isStopped = true;
             agent.enabled = false;
         }
 
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.isKinematic = true;
+        }
+
         var idleBehavior = GetComponent<AnimalIdleBehavior>();
         if (idleBehavior != null) idleBehavior.enabled = false;
 
         var fleeBehavior = GetComponent<FleeFromPredators>();
-        if (fleeBehavior != null) fleeBehavior.enabled = false;
+        if (fleeBehavior != null)
+        {
+            fleeBehavior.StopForDeath();
+            fleeBehavior.enabled = false;
+        }
 
         var predatorAI = GetComponent<PredatorAI>();
         if (predatorAI != null) predatorAI.enabled = false;
 
+        var herdBehavior = GetComponent<HerdBehavior>();
+        if (herdBehavior != null) herdBehavior.enabled = false;
+
         if (animator != null)
         {
+            // Play()ã¯ãƒ–ãƒ¬ãƒ³ãƒ‰ã‚„é·ç§»æ¡ä»¶ã‚’ä¸€åˆ‡ä»‹ã•ãšã€æŒ‡å®šã—ãŸStateã¸ã€Œæ¬¡ã®ãƒ•ãƒ¬ãƒ¼ãƒ ã€ã§ã¯ãªã
+            // ã€Œã“ã®ãƒ•ãƒ¬ãƒ¼ãƒ å†…ã€ã§å¼·åˆ¶çš„ã«åˆ‡ã‚Šæ›¿ãˆã‚‹ã€‚ä»–ã®Triggerã¨ã®ç«¶åˆã‚„é…å»¶ã‚’å—ã‘ãªã„ã€‚
+            animator.Play(dieStateName, 0, 0f);
+
+            // å¿µã®ãŸã‚Triggerã‚‚ç«‹ã¦ã¦ãŠã(dieStateNameã®ç¶´ã‚ŠãƒŸã‚¹ç­‰ã§Play()ãŒå¤±æ•—ã—ãŸå ´åˆã®ä¿é™º)
             animator.SetTrigger(dieTrigger);
         }
 
