@@ -30,7 +30,7 @@ TagManager:
   - QDSUITextInputField
   - SamplesInfoPanel
   - QDSUIToggleCheckboxRadio
-  - QDSUIToggleThumbnail
+  - Cloud
   layers:
   - Default
   - TransparentFX
