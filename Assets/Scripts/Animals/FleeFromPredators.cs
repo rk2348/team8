@@ -36,7 +36,6 @@ public class FleeFromPredators : MonoBehaviour
     [SerializeField] private bool isFleeing = false;
     [SerializeField] private Predator currentThreat;
 
-    // 外部(AnimalIdleBehaviorやPredatorAI、AnimalViewSwitchなど)から参照するための公開プロパティ
     public bool IsFleeing => isFleeing;
 
     /// <summary>
@@ -88,7 +87,7 @@ public class FleeFromPredators : MonoBehaviour
             if (!isFleeing)
             {
                 isFleeing = true;
-                FleeStartTime = Time.time; // 逃走開始時刻を記録
+                FleeStartTime = Time.time;
                 agent.speed = fleeSpeed;
 
                 if (animator != null)
@@ -163,9 +162,6 @@ public class FleeFromPredators : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 逃走中に記録していた開始時刻から、経過時間をLastFleeDurationとして確定させる。
-    /// </summary>
     private void ConfirmFleeDuration()
     {
         if (FleeStartTime >= 0f)

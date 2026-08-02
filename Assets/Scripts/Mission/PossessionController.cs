@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using System.Collections;
 
 /// <summary>
@@ -9,8 +10,7 @@ using System.Collections;
 /// Xボタンでいつでもミッションを見返せ(その間ステータスは隠れる)、
 /// 同じXボタンでステータス表示に戻る。
 /// Aボタンはステータス全体(3パネル)の表示/非表示を切り替える。
-/// ミッション達成時は完了パネル→スコアパネルの順で自動表示する。
-/// テキストは使わず、パネル(GameObject)の表示/非表示とスライダーの数値のみで表現する。
+/// ミッション達成時は完了パネル→スコアパネル(合計のみ)の順で自動表示する。
 /// </summary>
 public class PossessionController : MonoBehaviour
 {
@@ -26,10 +26,10 @@ public class PossessionController : MonoBehaviour
 
     [Header("スコアパネル")]
     public GameObject scorePanel;
-    [Tooltip("スコアをスライダーで表現する場合に使用(任意)")]
-    public Slider scoreSlider;
-    [Tooltip("スコアスライダーの最大値の目安")]
-    public float maxScoreForSlider = 1000f;
+    [Tooltip("合計スコアの表示")]
+    public TextMeshProUGUI totalScoreText;
+    [Tooltip("表示フォーマット。{0}にスコアの数値が入る")]
+    public string totalScoreFormat = "{0}";
 
     [Header("パネル本体（憑依中だけ表示するオブジェクト）")]
     public GameObject healthPanel;
@@ -70,10 +70,6 @@ public class PossessionController : MonoBehaviour
         HideActionPanels();
     }
 
-    /// <summary>
-    /// 憑依開始時に呼び出す。まずミッションパネルを表示し、
-    /// missionDisplayDuration秒後に自動でステータス3パネルへ切り替える。
-    /// </summary>
     public void ShowHUD(float currentHealth, float maxHealth, float currentHunger, float maxHunger, float dangerLevel)
     {
         UpdateHealth(currentHealth, maxHealth);
@@ -92,8 +88,6 @@ public class PossessionController : MonoBehaviour
 
         if (autoSwitchCoroutine != null) StopCoroutine(autoSwitchCoroutine);
         autoSwitchCoroutine = StartCoroutine(AutoSwitchToStats());
-
-        Debug.Log("PossessionController: ShowHUD呼び出し完了。ミッションパネルを表示しました。");
     }
 
     private IEnumerator AutoSwitchToStats()
@@ -104,9 +98,6 @@ public class PossessionController : MonoBehaviour
         autoSwitchCoroutine = null;
     }
 
-    /// <summary>
-    /// 憑依解除時に呼び出す。全パネルを非表示にする。
-    /// </summary>
     public void HideHUD()
     {
         if (autoSwitchCoroutine != null)
@@ -150,12 +141,10 @@ public class PossessionController : MonoBehaviour
 
     /// <summary>
     /// ミッション達成時に呼び出す。ステータス・ミッションパネルを隠し、
-    /// 「ミッション完了」パネル→一定時間後に自動でスコアパネルへ切り替える。
+    /// 「ミッション完了」パネル→一定時間後に自動で合計スコアパネルへ切り替える。
     /// </summary>
-    public void ShowMissionComplete(int score)
+    public void ShowMissionComplete(int totalScore)
     {
-        Debug.Log($"PossessionController: ShowMissionCompleteが呼ばれました。score={score}");
-
         if (autoSwitchCoroutine != null)
         {
             StopCoroutine(autoSwitchCoroutine);
@@ -170,11 +159,7 @@ public class PossessionController : MonoBehaviour
         SetMissionCompletePanelActive(true);
         SetScorePanelActive(false);
 
-        if (scoreSlider != null)
-        {
-            scoreSlider.maxValue = maxScoreForSlider;
-            scoreSlider.value = score;
-        }
+        if (totalScoreText != null) totalScoreText.text = string.Format(totalScoreFormat, totalScore);
 
         if (missionCompleteCoroutine != null) StopCoroutine(missionCompleteCoroutine);
         missionCompleteCoroutine = StartCoroutine(AutoSwitchToScore());

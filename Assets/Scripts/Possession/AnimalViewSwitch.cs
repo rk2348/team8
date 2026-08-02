@@ -10,6 +10,18 @@ using UnityEngine.AI;
 /// </summary>
 public class AnimalViewSwitch : MonoBehaviour
 {
+    /// <summary>
+    /// スコアの内訳を保持する構造体。内部計算とデバッグログ用に3要素と合計を保持する。
+    /// HUDへは合計(totalScore)のみを渡す。
+    /// </summary>
+    public struct ScoreBreakdown
+    {
+        public int stealthScore;   // 憑依?逃走開始までの加点
+        public int chaseScore;     // 逃走時間による減点(マイナス値)
+        public int huntSpeedScore; // 接近?仕留めまでのスピード加点
+        public int totalScore;     // 上記3つ + 基礎点の合計
+    }
+
     [Header("動物の設定")]
     [Tooltip("動物のルート（大元）のオブジェクト")]
     public Transform animalRoot;
@@ -102,7 +114,6 @@ public class AnimalViewSwitch : MonoBehaviour
 
     void Start()
     {
-        // animalRootが未設定の場合、このスクリプトがついているオブジェクトを自動設定
         if (animalRoot == null)
         {
             animalRoot = transform;
@@ -123,11 +134,9 @@ public class AnimalViewSwitch : MonoBehaviour
 
         if (!isPossessing)
         {
-            // 動物とプレイヤー間の距離を計算
             float distance = Vector3.Distance(animalRoot.position, playerRig.position);
             if (distance <= interactionDistance)
             {
-                // 接近時、「Aボタンで憑依する」等の案内パネルを表示
                 if (hudController != null)
                 {
                     hudController.ShowPossessPrompt();
@@ -140,7 +149,6 @@ public class AnimalViewSwitch : MonoBehaviour
             }
             else
             {
-                // 範囲外になったら案内パネルを消す
                 if (hudController != null)
                 {
                     hudController.HideActionPanels();
@@ -149,7 +157,6 @@ public class AnimalViewSwitch : MonoBehaviour
         }
         else
         {
-            // 憑依中にAボタンが押されたらステータスパネルの表示/非表示を切り替える
             if (OVRInput.GetDown(OVRInput.RawButton.A))
             {
                 if (hudController != null)
@@ -158,7 +165,6 @@ public class AnimalViewSwitch : MonoBehaviour
                 }
             }
 
-            // 憑依中にXボタンが押されたらミッションパネルの表示を切り替える
             if (OVRInput.GetDown(OVRInput.RawButton.X))
             {
                 if (hudController != null)
@@ -167,13 +173,11 @@ public class AnimalViewSwitch : MonoBehaviour
                 }
             }
 
-            // 憑依中にBボタンが押されたら解除
             if (OVRInput.GetDown(OVRInput.RawButton.B))
             {
                 ReleaseAnimal();
             }
 
-            // 憑依中に右手人差し指トリガーが押されたら特定のアクション(狩り or 鳴き声)
             if (OVRInput.GetDown(OVRInput.RawButton.RIndexTrigger))
             {
                 PerformSpecialAction();
@@ -184,29 +188,24 @@ public class AnimalViewSwitch : MonoBehaviour
     private void PossessAnimal()
     {
         isPossessing = true;
-        missionCompleted = false; // 憑依のたびにミッション状態をリセット
-        possessTime = Time.time;  // 憑依した瞬間を記録(スコア計算の起点)
+        missionCompleted = false;
+        possessTime = Time.time;
         huntStartTime = -1f;
 
-        // 憑依前の状態を保存(解除時に元へ戻すため)
         originalParent = animalRoot.parent;
         originalPosition = animalRoot.position;
         originalRotation = animalRoot.rotation;
 
-        // CharacterControllerが有効なままだと位置の直接変更がブロックされるため一時無効化
         if (playerController != null)
         {
             playerController.enabled = false;
         }
 
-        // 1. プレイヤーを動物の視点の位置・向きに合わせる
         playerRig.position = animalViewpoint.position;
         playerRig.rotation = animalViewpoint.rotation;
 
-        // 2. 動物のモデルをプレイヤーの子オブジェクトにする
         animalRoot.SetParent(playerRig, true);
 
-        // 3. Rigidbody(物理演算)がついていて移動の邪魔になる場合は無効化する
         animalRb = animalRoot.GetComponent<Rigidbody>();
         if (animalRb != null)
         {
@@ -219,17 +218,15 @@ public class AnimalViewSwitch : MonoBehaviour
             playerController.enabled = true;
         }
 
-        // 憑依中はNPC用のAIを全て止める(勝手に狩り・徘徊・逃走をしないようにする)
         if (idleBehavior != null) idleBehavior.enabled = false;
         if (fleeBehavior != null) fleeBehavior.enabled = false;
         if (predatorAI != null) predatorAI.enabled = false;
         if (navAgent != null)
         {
             navAgent.isStopped = true;
-            navAgent.enabled = false; // 無効化することでUpdate自体が呼ばれなくなり、勝手な移動を完全に防げる
+            navAgent.enabled = false;
         }
 
-        // HUD表示(まずミッション→一定時間後に自動でステータスへ)
         if (hudController != null)
         {
             hudController.ShowHUD(currentHealth, maxHealth, currentHunger, maxHunger, dangerLevel);
@@ -242,24 +239,18 @@ public class AnimalViewSwitch : MonoBehaviour
     {
         isPossessing = false;
 
-        // 1. 動物の親子関係を解除し、元の親に戻す
         animalRoot.SetParent(originalParent, true);
-
-        // 2. 動物を憑依前の位置・向きに戻す
         animalRoot.position = originalPosition;
         animalRoot.rotation = originalRotation;
 
-        // 3. Rigidbodyのkinematic状態を元に戻す
         if (animalRb != null)
         {
             animalRb.isKinematic = wasRigidbodyKinematic;
         }
 
-        // 4. NavMeshAgentを先に再有効化してから、AIコンポーネントを戻す
         if (navAgent != null)
         {
             navAgent.enabled = true;
-            // 元の位置がNavMesh上から外れていないかを念のため補正
             if (!navAgent.isOnNavMesh)
             {
                 if (NavMesh.SamplePosition(animalRoot.position, out NavMeshHit hit, 5f, NavMesh.AllAreas))
@@ -273,7 +264,6 @@ public class AnimalViewSwitch : MonoBehaviour
         if (fleeBehavior != null) fleeBehavior.enabled = true;
         if (predatorAI != null) predatorAI.enabled = true;
 
-        // HUD非表示
         if (hudController != null)
         {
             hudController.HideHUD();
@@ -282,11 +272,6 @@ public class AnimalViewSwitch : MonoBehaviour
         Debug.Log("憑依を解除し、動物を元の位置に戻しました！");
     }
 
-    /// <summary>
-    /// 右人差し指トリガーで発動するアクション。
-    /// 狩りが可能な動物(トラ等)で、かつ狩りの対象が射程内にいれば狩りを行う。
-    /// 対象がいない場合は鳴き声を再生する。
-    /// </summary>
     private void PerformSpecialAction()
     {
         if (canHunt && !missionCompleted)
@@ -297,9 +282,9 @@ public class AnimalViewSwitch : MonoBehaviour
                 float distance = Vector3.Distance(animalRoot.position, target.transform.position);
                 if (distance <= huntRange)
                 {
-                    huntStartTime = Time.time; // 「近づいてから倒すまでの時間」の起点
+                    huntStartTime = Time.time;
                     StartCoroutine(HuntSequence(target));
-                    return; // 狩りを実行したら鳴き声は鳴らさない
+                    return;
                 }
             }
         }
@@ -309,7 +294,6 @@ public class AnimalViewSwitch : MonoBehaviour
 
     private IEnumerator HuntSequence(AnimalIdentity target)
     {
-        // 対象の方を向いて攻撃モーションを再生
         Vector3 direction = target.transform.position - animalRoot.position;
         direction.y = 0f;
         if (direction.sqrMagnitude > 0.0001f)
@@ -333,24 +317,25 @@ public class AnimalViewSwitch : MonoBehaviour
         }
 
         missionCompleted = true;
-        currentScore = CalculateScore(targetFlee);
+        var breakdown = CalculateScore(targetFlee);
+        currentScore = breakdown.totalScore;
 
-        // ミッション完了パネル→スコアパネルの流れをHUD側に任せる
+        // ミッション完了パネル→スコアパネル(合計のみ)の流れをHUD側に任せる
         if (hudController != null)
         {
-            hudController.ShowMissionComplete(currentScore);
+            hudController.ShowMissionComplete(breakdown.totalScore);
         }
 
-        Debug.Log($"狩りに成功しました。スコア: {currentScore}");
+        Debug.Log($"狩りに成功しました。スコア: {breakdown.totalScore} (内訳: 潜伏{breakdown.stealthScore} / 追跡{breakdown.chaseScore} / 速度{breakdown.huntSpeedScore})");
     }
 
     /// <summary>
     /// 「憑依→逃走開始までの時間」「逃走していた時間」「接近→仕留めるまでの時間」の
-    /// 3要素から最終スコアを算出する。
+    /// 3要素から最終スコアを算出する。内訳はデバッグログ用に保持し、HUDへは合計のみ渡す。
     /// </summary>
-    private int CalculateScore(FleeFromPredators targetFlee)
+    private ScoreBreakdown CalculateScore(FleeFromPredators targetFlee)
     {
-        float score = baseScoreValue;
+        var breakdown = new ScoreBreakdown();
 
         // 1. 憑依してから、シカが逃げ出すまでの時間(長いほど加点=気づかれず接近できた)
         if (targetFlee != null && targetFlee.FleeStartTime >= 0f && possessTime >= 0f)
@@ -358,28 +343,26 @@ public class AnimalViewSwitch : MonoBehaviour
             float timeBeforeFlee = Mathf.Max(0f, targetFlee.FleeStartTime - possessTime);
             if (timeBeforeFlee > stealthGraceTime)
             {
-                score += (timeBeforeFlee - stealthGraceTime) * scorePerSecondBeforeFlee;
+                breakdown.stealthScore = Mathf.RoundToInt((timeBeforeFlee - stealthGraceTime) * scorePerSecondBeforeFlee);
             }
         }
 
         // 2. シカが逃げていた時間(長いほど減点=追跡に手間取った)
         float fleeDuration = targetFlee != null ? targetFlee.LastFleeDuration : 0f;
-        score -= fleeDuration * penaltyPerSecondFleeing;
+        breakdown.chaseScore = -Mathf.RoundToInt(fleeDuration * penaltyPerSecondFleeing);
 
         // 3. 近づいてから倒すまでの時間(短いほど加点=一瞬で仕留めた)
         float huntDuration = huntStartTime >= 0f ? (Time.time - huntStartTime) : huntSpeedBenchmark;
         float diff = huntSpeedBenchmark - huntDuration;
-        if (diff > 0f)
-        {
-            score += diff * scorePerSecondFasterHunt;
-        }
+        breakdown.huntSpeedScore = diff > 0f ? Mathf.RoundToInt(diff * scorePerSecondFasterHunt) : 0;
 
-        return Mathf.Max(0, Mathf.RoundToInt(score));
+        breakdown.totalScore = Mathf.Max(0, baseScoreValue + breakdown.stealthScore + breakdown.chaseScore + breakdown.huntSpeedScore);
+
+        return breakdown;
     }
 
     private void PlayCry()
     {
-        // クールダウン中は連打による多重再生を防ぐ
         if (Time.time - lastCryTime < cryCooldown) return;
         lastCryTime = Time.time;
 
