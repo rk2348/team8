@@ -682,10 +682,6 @@ Hackit2026の3日間の開催期間（実質開発時間：約16.5時間）で�
 | --- | --- | --- | --- |
 | African savanna 2 | pixabay | https://pixabay.com/ja/sound-effects/%E8%87%AA%E7%84%B6-african-savanna-2-23769/ | 利用規約に基づき使用／クレジット表記：不要 |
 | 風の音 | 効果音ラボ | https://soundeffect-lab.info/sound/search.php?s=%E9%A2%A8 | 利用規約に基づき使用／クレジット表記：不要 |
-| タイトルBGM |  |  |  |
-| 憑依中BGM |  |  |  |
-| ミッション中BGM |  |  |  |
-| 散策中BGM |  |  |  |
 | 自然・動物[1] | 効果音ラボ | https://soundeffect-lab.info/sound/animal/ | 利用規約に基づき使用／クレジット表記：不要 |
 | 144 ロイヤリティフリーの tiger 効果音 | pixabay | https://pixabay.com/ja/sound-effects/search/tiger/ | 利用規約に基づき使用／クレジット表記：不要 |
 | 虎01 | 魔王魂 | https://maou.audio/se_voice_tiger01/ | 利用規約に基づき使用／クレジット表記：必要（例：音楽：魔王魂） |
