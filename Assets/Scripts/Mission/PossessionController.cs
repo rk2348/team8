@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using System.Collections.Generic;
 
 /// <summary>
 /// 憑依中のHUD管理。
@@ -11,9 +12,16 @@ using System.Collections;
 /// 同じXボタンでステータス表示に戻る。
 /// Aボタンはステータス全体(3パネル)の表示/非表示を切り替える。
 /// ミッション達成時は完了パネル→スコアパネル(合計のみ)の順で自動表示する。
+///
+/// パネルの表示/非表示は全てCanvasGroupのalphaをフェードさせる形の動的な切り替えになっている
+/// (瞬間的なSetActiveのオン/オフではなく、滑らかにフェードイン/フェードアウトする)。
 /// </summary>
 public class PossessionController : MonoBehaviour
 {
+    [Header("パネル切り替えの演出設定")]
+    [Tooltip("パネルが表示/非表示に切り替わる際のフェード時間(秒)")]
+    public float panelFadeDuration = 0.25f;
+
     [Header("ミッションパネル")]
     public GameObject missionPanel;
     [Tooltip("憑依開始時、ミッションパネルを表示し続ける秒数(経過後は自動でステータス表示に切り替わる)")]
@@ -61,13 +69,16 @@ public class PossessionController : MonoBehaviour
     private Coroutine autoSwitchCoroutine;
     private Coroutine missionCompleteCoroutine;
 
+    // パネルごとのフェード中コルーチンを管理(同じパネルに対して複数のフェードが同時に走らないようにするため)
+    private readonly Dictionary<GameObject, Coroutine> fadeCoroutines = new Dictionary<GameObject, Coroutine>();
+
     void Awake()
     {
-        SetStatPanelsActive(false);
-        SetMissionPanelActive(false);
-        SetMissionCompletePanelActive(false);
-        SetScorePanelActive(false);
-        HideActionPanels();
+        SetStatPanelsActive(false, true);
+        SetMissionPanelActive(false, true);
+        SetMissionCompletePanelActive(false, true);
+        SetScorePanelActive(false, true);
+        HideActionPanels(true);
     }
 
     public void ShowHUD(float currentHealth, float maxHealth, float currentHunger, float maxHunger, float dangerLevel)
@@ -181,20 +192,20 @@ public class PossessionController : MonoBehaviour
 
     public void ShowPossessPrompt()
     {
-        if (possessPromptPanel != null) possessPromptPanel.SetActive(true);
-        if (possessingActionPanel != null) possessingActionPanel.SetActive(false);
+        SetPanelActive(possessPromptPanel, true);
+        SetPanelActive(possessingActionPanel, false);
     }
 
     public void ShowPossessingActionPanel()
     {
-        if (possessPromptPanel != null) possessPromptPanel.SetActive(false);
-        if (possessingActionPanel != null) possessingActionPanel.SetActive(true);
+        SetPanelActive(possessPromptPanel, false);
+        SetPanelActive(possessingActionPanel, true);
     }
 
-    public void HideActionPanels()
+    public void HideActionPanels(bool instant = false)
     {
-        if (possessPromptPanel != null) possessPromptPanel.SetActive(false);
-        if (possessingActionPanel != null) possessingActionPanel.SetActive(false);
+        SetPanelActive(possessPromptPanel, false, instant);
+        SetPanelActive(possessingActionPanel, false, instant);
     }
 
     public void UpdateHealth(float currentHealth, float maxHealth)
@@ -230,25 +241,102 @@ public class PossessionController : MonoBehaviour
         }
     }
 
-    private void SetStatPanelsActive(bool active)
+    private void SetStatPanelsActive(bool active, bool instant = false)
     {
-        if (healthPanel != null) healthPanel.SetActive(active);
-        if (hungerPanel != null) hungerPanel.SetActive(active);
-        if (dangerPanel != null) dangerPanel.SetActive(active);
+        SetPanelActive(healthPanel, active, instant);
+        SetPanelActive(hungerPanel, active, instant);
+        SetPanelActive(dangerPanel, active, instant);
     }
 
-    private void SetMissionPanelActive(bool active)
+    private void SetMissionPanelActive(bool active, bool instant = false)
     {
-        if (missionPanel != null) missionPanel.SetActive(active);
+        SetPanelActive(missionPanel, active, instant);
     }
 
-    private void SetMissionCompletePanelActive(bool active)
+    private void SetMissionCompletePanelActive(bool active, bool instant = false)
     {
-        if (missionCompletePanel != null) missionCompletePanel.SetActive(active);
+        SetPanelActive(missionCompletePanel, active, instant);
     }
 
-    private void SetScorePanelActive(bool active)
+    private void SetScorePanelActive(bool active, bool instant = false)
     {
-        if (scorePanel != null) scorePanel.SetActive(active);
+        SetPanelActive(scorePanel, active, instant);
+    }
+
+    /// <summary>
+    /// パネルの表示/非表示を、瞬間切り替えではなくCanvasGroupのalphaフェードで動的に行う。
+    /// 表示時: SetActive(true) → alphaを0から1へフェードイン
+    /// 非表示時: alphaを現在値から0へフェードアウト → SetActive(false)
+    /// instant=trueの場合は従来通り瞬時に切り替える(初期化時など、フェード不要な場面用)。
+    /// </summary>
+    private void SetPanelActive(GameObject panel, bool active, bool instant = false)
+    {
+        if (panel == null) return;
+
+        // 同じパネルに対して既にフェード中のコルーチンがあれば止めてから新しいフェードを開始する
+        if (fadeCoroutines.TryGetValue(panel, out Coroutine running) && running != null)
+        {
+            StopCoroutine(running);
+            fadeCoroutines[panel] = null;
+        }
+
+        if (instant || panelFadeDuration <= 0f)
+        {
+            CanvasGroup instantGroup = GetOrAddCanvasGroup(panel);
+            instantGroup.alpha = active ? 1f : 0f;
+            instantGroup.interactable = active;
+            instantGroup.blocksRaycasts = active;
+            panel.SetActive(active);
+            return;
+        }
+
+        Coroutine c = StartCoroutine(FadePanel(panel, active));
+        fadeCoroutines[panel] = c;
+    }
+
+    private IEnumerator FadePanel(GameObject panel, bool active)
+    {
+        CanvasGroup group = GetOrAddCanvasGroup(panel);
+
+        if (active)
+        {
+            panel.SetActive(true);
+        }
+
+        float startAlpha = group.alpha;
+        float endAlpha = active ? 1f : 0f;
+        float elapsed = 0f;
+
+        // 表示中の当たり判定はフェード開始時点で切り替えておく
+        // (フェードイン中は既に操作できてよく、フェードアウト中は早めに操作を受け付けなくする)
+        group.interactable = active;
+        group.blocksRaycasts = active;
+
+        while (elapsed < panelFadeDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / panelFadeDuration);
+            group.alpha = Mathf.Lerp(startAlpha, endAlpha, t);
+            yield return null;
+        }
+
+        group.alpha = endAlpha;
+
+        if (!active)
+        {
+            panel.SetActive(false);
+        }
+
+        fadeCoroutines[panel] = null;
+    }
+
+    private CanvasGroup GetOrAddCanvasGroup(GameObject panel)
+    {
+        CanvasGroup group = panel.GetComponent<CanvasGroup>();
+        if (group == null)
+        {
+            group = panel.AddComponent<CanvasGroup>();
+        }
+        return group;
     }
 }
