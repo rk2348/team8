@@ -107,6 +107,8 @@ public class AnimalIdleBehavior : MonoBehaviour
     /// </summary>
     public void Pause()
     {
+        if (isPaused) return;
+
         isPaused = true;
         if (agent != null && agent.enabled)
         {

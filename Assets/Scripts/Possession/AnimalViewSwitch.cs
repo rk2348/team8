@@ -37,9 +37,63 @@ public class AnimalViewSwitch : MonoBehaviour
     public Transform playerRig;
     [Tooltip("プレイヤーのCharacterController")]
     public CharacterController playerController;
+    [Tooltip("HMDのカメラ（CenterEyeAnchorなど）。Intro Display Objectを視界固定で表示する際の親として使う")]
+    public Transform head;
 
     // 既に動物に乗り移っているかの判定
     private bool isPossessing = false;
+
+    [Header("憑依時の演出設定")]
+    [Tooltip("Aボタンを押してから実際に憑依するまでの間、カメラが動物の周りを1周する演出を行う")]
+    public bool playPossessionIntro = true;
+    [Tooltip("演出アニメーションを再生する対象のAnimator(この動物のAnimatorを直接アタッチしてください)。" +
+              "Possession Intro Clipを使う場合は不要です")]
+    public Animator possessionIntroAnimator;
+    [Tooltip("周回終了後に再生する演出アニメーションのTrigger名(possessionIntroAnimatorのController内にStateとして" +
+              "組み込まれているものを指定)。Possession Intro Clipを設定した場合はこちらは無視されます")]
+    public string possessionIntroAnimTrigger = "Awaken";
+    [Tooltip("Trigger名の代わりに、AnimationClipアセットを直接アタッチして再生したい場合はこちらを設定してください。" +
+              "Animator Controller側にStateとして用意する必要がなくなります。設定するとTrigger方式より優先されます")]
+    public AnimationClip possessionIntroClip;
+    [Tooltip("Possession Intro Clipを再生するためのレガシーAnimationコンポーネント。" +
+              "Possession Intro Clipを使う場合は、動物のオブジェクトにAnimationコンポーネントを追加してここにアタッチしてください")]
+    public Animation possessionIntroAnimationComponent;
+    [Tooltip("周回の半径(動物の中心からの水平距離、メートル)")]
+    public float orbitRadius = 4.0f;
+    [Tooltip("周回時の高さ(動物のルート位置からの相対的な高さ、メートル)。大きいほど『上から見下ろす』感が強くなる")]
+    public float orbitHeight = 3.0f;
+    [Tooltip("周回の開始位置を、動物の正面から見て何度の方向にするか。0=真正面、90=真右、-90=真左。" +
+              "「右上前」なら正面よりやや右(例:45度)がおすすめ")]
+    public float orbitStartAngleFromFront = 45f;
+    [Tooltip("周回開始位置まで移動するのにかける時間(秒)")]
+    public float moveToOrbitStartDuration = 1.0f;
+    [Tooltip("動物の周りを1周するのにかける時間(秒)")]
+    public float cameraOrbitDuration = 3.0f;
+    [Tooltip("演出アニメーションの再生が終わるまでの待機時間(秒)。この後に実際の憑依処理を行う。" +
+              "Possession Intro Clipを設定している場合はそのClipの長さが自動で使われます")]
+    public float possessionIntroAnimDuration = 2.0f;
+    [Tooltip("演出アニメーションを再生するタイミングで表示するオブジェクト(3Dオブジェクト・エフェクト・アイコンなど何でも可)。" +
+              "シーン上に配置したGameObjectをアタッチしてください(表示/非表示のみこのスクリプトが制御します)")]
+    public GameObject introDisplayObject;
+    [Tooltip("Intro Display Objectを自動でhead(CenterEyeAnchor)の子にし、視界内の固定位置に配置する")]
+    public bool autoAttachIntroDisplayToHead = true;
+    [Tooltip("head基準のローカル座標。右下に見せたい場合の目安: X(右)はプラス、Y(下)はマイナス、Z(奥行き)はプラス")]
+    public Vector3 introDisplayLocalPosition = new Vector3(0.3f, -0.2f, 0.5f);
+    [Tooltip("head基準のローカル回転(度)")]
+    public Vector3 introDisplayLocalEulerAngles = Vector3.zero;
+    [Tooltip("head基準のローカルスケール")]
+    public Vector3 introDisplayLocalScale = Vector3.one;
+    [Tooltip("演出アニメーションを再生するタイミングで鳴らす効果音のAudioSource")]
+    public AudioSource introSfxAudioSource;
+    [Tooltip("再生する効果音のAudioClip")]
+    public AudioClip introSfxClip;
+    [Tooltip("演出アニメーション再生開始から何秒後にカメラを微振動させるか")]
+    public float cameraShakeDelay = 0.5f;
+    [Tooltip("カメラを微振動させ続ける時間(秒)")]
+    public float cameraShakeDuration = 0.8f;
+    [Tooltip("微振動の揺れ幅(メートル)")]
+    public float cameraShakeMagnitude = 0.03f;
+    private bool isPlayingPossessionIntro = false;
 
     [Header("HUDの設定")]
     public PossessionController hudController;
@@ -72,6 +126,8 @@ public class AnimalViewSwitch : MonoBehaviour
     public string attackTrigger = "Attack";
     [Tooltip("攻撃モーションが終わるまでの時間(秒)")]
     public float attackAnimDuration = 1.0f;
+    [Tooltip("狩り成功(対象を倒した)後、ミッション完了パネルを表示するまでの待機時間(秒)")]
+    public float missionCompletePanelDelay = 3.0f;
     private bool missionCompleted = false;
 
     [Header("スコアの設定")]
@@ -102,7 +158,10 @@ public class AnimalViewSwitch : MonoBehaviour
     [Tooltip("この動物のNavMeshAgent。憑依中は操作の競合を防ぐため無効化する")]
     public NavMeshAgent navAgent;
 
-    private Animator animator;
+    [Tooltip("攻撃アニメーション(attackTrigger)を再生する対象のAnimator。" +
+              "この動物にAnimatorが複数アタッチされている場合は、意図した方を直接ここに指定してください。" +
+              "未設定ならGetComponentInChildrenで自動取得しますが、複数ある場合は狙った方が取れるとは限りません")]
+    public Animator animator;
     private AnimalIdentity selfIdentity;
 
     // 憑依解除時に元へ戻すための情報
@@ -119,13 +178,49 @@ public class AnimalViewSwitch : MonoBehaviour
             animalRoot = transform;
         }
 
-        animator = GetComponentInChildren<Animator>();
+        if (animator == null)
+        {
+            animator = GetComponentInChildren<Animator>();
+        }
         selfIdentity = GetComponent<AnimalIdentity>();
+
+        if (possessionIntroAnimator == null)
+        {
+            possessionIntroAnimator = animator;
+        }
 
         if (idleBehavior == null) idleBehavior = GetComponent<AnimalIdleBehavior>();
         if (fleeBehavior == null) fleeBehavior = GetComponent<FleeFromPredators>();
         if (predatorAI == null) predatorAI = GetComponent<PredatorAI>();
         if (navAgent == null) navAgent = GetComponent<NavMeshAgent>();
+
+        SetupIntroDisplayObject();
+    }
+
+    /// <summary>
+    /// Intro Display Objectをhead(CenterEyeAnchor)の子オブジェクトにし、
+    /// 指定したローカル座標・回転・スケールに配置する。
+    /// これにより、プレイヤーがどこを向いても常に視界の同じ位置(例:右下)に表示できる。
+    /// 開始時は非表示にしておき、演出のタイミングでのみSetActive(true)にする。
+    /// </summary>
+    private void SetupIntroDisplayObject()
+    {
+        if (introDisplayObject == null) return;
+
+        if (autoAttachIntroDisplayToHead && head != null)
+        {
+            introDisplayObject.transform.SetParent(head, false);
+            introDisplayObject.transform.localPosition = introDisplayLocalPosition;
+            introDisplayObject.transform.localRotation = Quaternion.Euler(introDisplayLocalEulerAngles);
+            introDisplayObject.transform.localScale = introDisplayLocalScale;
+        }
+        else if (autoAttachIntroDisplayToHead && head == null)
+        {
+            Debug.LogWarning("AnimalViewSwitch: autoAttachIntroDisplayToHeadが有効ですが、headが設定されていません。" +
+                "InspectorでCenterEyeAnchorなどをheadにアタッチしてください。");
+        }
+
+        introDisplayObject.SetActive(false); // 演出開始まで非表示にしておく
     }
 
     void Update()
@@ -142,9 +237,16 @@ public class AnimalViewSwitch : MonoBehaviour
                     hudController.ShowPossessPrompt();
                 }
 
-                if (OVRInput.GetDown(OVRInput.RawButton.A))
+                if (!isPlayingPossessionIntro && OVRInput.GetDown(OVRInput.RawButton.A))
                 {
-                    PossessAnimal();
+                    if (playPossessionIntro)
+                    {
+                        StartCoroutine(PossessionIntroSequence());
+                    }
+                    else
+                    {
+                        PossessAnimal();
+                    }
                 }
             }
             else
@@ -182,6 +284,246 @@ public class AnimalViewSwitch : MonoBehaviour
             {
                 PerformSpecialAction();
             }
+        }
+    }
+
+    /// <summary>
+    /// Aボタンが押されてから実際に憑依するまでの演出シーケンス。
+    /// 1. プレイヤーの通常操作を止める
+    /// 2. playerRig(プレイヤーのリグ全体)を動物の周りに円軌道で1周させ、常に動物の方を向かせる
+    /// 3. 周り終えたら、動物側で指定した演出アニメーションを再生し、同時に演出オブジェクトの表示とSEの再生を行う
+    /// 4. アニメーション再生時間分待機
+    /// 5. 演出オブジェクトを非表示に戻し、通常操作を戻し、実際の憑依処理(PossessAnimal)を行う
+    /// </summary>
+    private IEnumerator PossessionIntroSequence()
+    {
+        isPlayingPossessionIntro = true;
+
+        // 演出中はVRMovement側の移動入力を無効化する(CharacterControllerを無効化するとMove()が効かなくなる)
+        if (playerController != null)
+        {
+            playerController.enabled = false;
+        }
+
+        yield return StartCoroutine(MoveToOrbitStart());
+        yield return StartCoroutine(OrbitAroundAnimal());
+
+        // Possession Intro Clipが設定されていればそちらを優先し、レガシーAnimationコンポーネントで直接再生する。
+        // 未設定ならこれまで通りAnimator ControllerのTrigger経由で再生する。
+        float waitDuration = possessionIntroAnimDuration;
+
+        if (possessionIntroClip != null)
+        {
+            if (possessionIntroAnimationComponent != null)
+            {
+                possessionIntroAnimationComponent.clip = possessionIntroClip;
+                possessionIntroAnimationComponent.Play(possessionIntroClip.name);
+                waitDuration = possessionIntroClip.length; // Clipの長さをそのまま待機時間として使う
+            }
+            else
+            {
+                Debug.LogWarning("AnimalViewSwitch: possessionIntroClipは設定されていますが、" +
+                    "possessionIntroAnimationComponent(Animationコンポーネント)がアタッチされていません。" +
+                    "動物のオブジェクトにAnimationコンポーネントを追加してアタッチしてください。");
+            }
+        }
+        else if (possessionIntroAnimator != null && !string.IsNullOrEmpty(possessionIntroAnimTrigger))
+        {
+            possessionIntroAnimator.SetTrigger(possessionIntroAnimTrigger);
+        }
+        else if (possessionIntroAnimator == null)
+        {
+            Debug.LogWarning("AnimalViewSwitch: possessionIntroAnimatorもpossessionIntroClipも設定されていません。" +
+                "どちらか一方をInspectorで設定してください。");
+        }
+
+        // アニメーション再生と同じタイミングで、演出オブジェクトの表示とSEの再生を行う
+        if (introDisplayObject != null)
+        {
+            introDisplayObject.SetActive(true);
+        }
+        if (introSfxAudioSource != null && introSfxClip != null)
+        {
+            introSfxAudioSource.PlayOneShot(introSfxClip);
+        }
+
+        // アニメーション再生開始と同時に、指定秒数後のカメラ微振動を並行して開始する
+        // (メインの待機処理をブロックしないよう、別コルーチンとして起動するだけにする)
+        StartCoroutine(ShakeCameraAfterDelay(cameraShakeDelay, cameraShakeDuration, cameraShakeMagnitude));
+
+        yield return new WaitForSeconds(waitDuration);
+
+        // 演出が終わったのでオブジェクトは非表示に戻す(この後PossessAnimal()で本来のHUDが表示される)
+        if (introDisplayObject != null)
+        {
+            introDisplayObject.SetActive(false);
+        }
+
+        if (playerController != null)
+        {
+            playerController.enabled = true;
+        }
+
+        isPlayingPossessionIntro = false;
+
+        PossessAnimal();
+    }
+
+    /// <summary>
+    /// delay秒待ってから、playerRigの位置をduration秒間だけ小刻みに揺らす(微振動)。
+    /// 揺れ幅は時間経過とともに徐々に収まっていく。
+    /// このコルーチンは呼び出し元(PossessionIntroSequence)の待機処理をブロックしないよう、
+    /// StartCoroutineで並行実行する前提で作っている。
+    /// </summary>
+    private IEnumerator ShakeCameraAfterDelay(float delay, float duration, float magnitude)
+    {
+        if (delay > 0f)
+        {
+            yield return new WaitForSeconds(delay);
+        }
+
+        if (playerRig == null || duration <= 0f || magnitude <= 0f)
+        {
+            yield break;
+        }
+
+        Vector3 basePosition = playerRig.position;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float damper = 1f - Mathf.Clamp01(elapsed / duration); // 時間経過で徐々に揺れが収まる
+
+            Vector3 offset = Random.insideUnitSphere * magnitude * damper;
+            offset.y *= 0.5f; // 上下の揺れはVR酔いを避けるため控えめにする
+
+            playerRig.position = basePosition + offset;
+
+            yield return null;
+        }
+
+        playerRig.position = basePosition;
+    }
+
+    /// <summary>
+    /// 動物の向き(forward/right)を基準に「正面から見てorbitStartAngleFromFront度の方向、
+    /// 高さorbitHeight、半径orbitRadius」の位置(=周回の開始位置)を算出し、
+    /// そこまでplayerRigを滑らかに移動させる(常に動物の方を向かせながら)。
+    /// </summary>
+    private IEnumerator MoveToOrbitStart()
+    {
+        Vector3 startPosition = CalculateOrbitPosition(orbitStartAngleFromFront);
+        Vector3 fromPosition = playerRig.position;
+        Quaternion fromRotation = playerRig.rotation;
+
+        float elapsed = 0f;
+        float duration = Mathf.Max(0.01f, moveToOrbitStartDuration);
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+
+            playerRig.position = Vector3.Lerp(fromPosition, startPosition, t);
+
+            // Y成分も含めて動物の方を向く(高さがある分、自然に見下ろす角度になる)
+            Vector3 lookDir = animalRoot.position - playerRig.position;
+            if (lookDir.sqrMagnitude > 0.0001f)
+            {
+                Quaternion lookRot = Quaternion.LookRotation(lookDir.normalized, Vector3.up);
+                playerRig.rotation = Quaternion.Slerp(fromRotation, lookRot, t);
+            }
+
+            yield return null;
+        }
+
+        playerRig.position = startPosition;
+        Vector3 finalLookDir = animalRoot.position - playerRig.position;
+        if (finalLookDir.sqrMagnitude > 0.0001f)
+        {
+            playerRig.rotation = Quaternion.LookRotation(finalLookDir.normalized, Vector3.up);
+        }
+    }
+
+    /// <summary>
+    /// 動物の正面方向を基準として、angleFromFrontDegrees度(右回り)・orbitRadius・orbitHeightから
+    /// ワールド座標を算出する。0度=動物の正面、正の値=右方向。
+    /// </summary>
+    private Vector3 CalculateOrbitPosition(float angleFromFrontDegrees)
+    {
+        Vector3 animalForward = animalRoot.forward;
+        animalForward.y = 0f;
+        if (animalForward.sqrMagnitude < 0.0001f)
+        {
+            animalForward = Vector3.forward;
+        }
+        animalForward.Normalize();
+
+        Quaternion rot = Quaternion.AngleAxis(angleFromFrontDegrees, Vector3.up);
+        Vector3 direction = rot * animalForward;
+
+        Vector3 position = animalRoot.position + direction * orbitRadius;
+        position.y = animalRoot.position.y + orbitHeight;
+        return position;
+    }
+
+    /// <summary>
+    /// playerRigを動物(animalRoot)の周りに、orbitRadius・orbitHeightを使った円軌道で
+    /// (現在いる開始位置から)1周(360度)させる。周回中は常に動物の方を向くようにする
+    /// (ヘッド自体はHMDの実際の向きに追従するため、リグ全体の向きだけを制御する)。
+    /// </summary>
+    private IEnumerator OrbitAroundAnimal()
+    {
+        Vector3 pivot = animalRoot.position;
+
+        // 半径はorbitRadius(Inspectorで設定した値、例:4m)で固定する。MoveToOrbitStart()でこの半径の
+        // 位置まで移動しているはずだが、開始角度だけは現在位置から逆算して滑らかに繋げる。
+        float radius = Mathf.Max(orbitRadius, 0.1f);
+
+        Vector3 startOffset = playerRig.position - pivot;
+        startOffset.y = 0f;
+        if (startOffset.sqrMagnitude < 0.0001f)
+        {
+            startOffset = new Vector3(radius, 0f, 0f);
+        }
+
+        float startAngle = Mathf.Atan2(startOffset.z, startOffset.x);
+        float startHeight = pivot.y + orbitHeight;
+
+        float elapsed = 0f;
+        while (elapsed < cameraOrbitDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / cameraOrbitDuration);
+            float angle = startAngle + t * (Mathf.PI * 2f); // 360度分回転
+
+            Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+            Vector3 newPosition = pivot + offset;
+            newPosition.y = startHeight; // 高さは変えない
+
+            playerRig.position = newPosition;
+
+            // Y成分も含めて動物を向く(高さがある分、周回中もずっと見下ろす角度を保つ)
+            Vector3 lookDir = pivot - newPosition;
+            if (lookDir.sqrMagnitude > 0.0001f)
+            {
+                playerRig.rotation = Quaternion.LookRotation(lookDir.normalized, Vector3.up);
+            }
+
+            yield return null;
+        }
+
+        // 誤差が溜まっている可能性があるため、最後に開始角度ピッタリの位置へ合わせて1周を確実に終える
+        Vector3 finalOffset = new Vector3(Mathf.Cos(startAngle), 0f, Mathf.Sin(startAngle)) * radius;
+        Vector3 finalPosition = pivot + finalOffset;
+        finalPosition.y = startHeight;
+        playerRig.position = finalPosition;
+
+        Vector3 finalLookDir2 = pivot - finalPosition;
+        if (finalLookDir2.sqrMagnitude > 0.0001f)
+        {
+            playerRig.rotation = Quaternion.LookRotation(finalLookDir2.normalized, Vector3.up);
         }
     }
 
@@ -320,13 +662,16 @@ public class AnimalViewSwitch : MonoBehaviour
         var breakdown = CalculateScore(targetFlee);
         currentScore = breakdown.totalScore;
 
-        // ミッション完了パネル→スコアパネル(合計のみ)の流れをHUD側に任せる
+        Debug.Log($"狩りに成功しました。スコア: {breakdown.totalScore} (内訳: 潜伏{breakdown.stealthScore} / 追跡{breakdown.chaseScore} / 速度{breakdown.huntSpeedScore})");
+
+        // 倒した瞬間ではなく、少し間を置いてからミッション完了パネルを表示する
+        // (仕留めた直後の余韻・演出を見せてからパネルを出すため)
+        yield return new WaitForSeconds(missionCompletePanelDelay);
+
         if (hudController != null)
         {
             hudController.ShowMissionComplete(breakdown.totalScore);
         }
-
-        Debug.Log($"狩りに成功しました。スコア: {breakdown.totalScore} (内訳: 潜伏{breakdown.stealthScore} / 追跡{breakdown.chaseScore} / 速度{breakdown.huntSpeedScore})");
     }
 
     /// <summary>

@@ -104,3 +104,7 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# --- カスタム除外設定（100MB超えのファイルなど） ---
+Ground_*.fbx
+Ground_*.fbx.meta
