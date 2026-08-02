@@ -1976,7 +1976,7 @@ MonoBehaviour:
   walkWeight: 1
   eatWeight: 2.5
   fleeBehavior: {fileID: 0}
-  herdBehavior: {fileID: 0}
+  herdBehavior: {fileID: 1047599774838496777}
 --- !u!114 &1047599774838496777
 MonoBehaviour:
   m_ObjectHideFlags: 0

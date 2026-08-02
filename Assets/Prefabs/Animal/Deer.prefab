@@ -549,7 +549,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 270efd0cbd7c6e04db22dbae4d9b8bc1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FleeFromPredators
-  detectionRadius: 30
+  detectionRadius: 40
   fleeDistance: 36
   normalSpeed: 2
   fleeSpeed: 6
@@ -585,7 +585,7 @@ MonoBehaviour:
   walkWeight: 2
   eatWeight: 1.5
   fleeBehavior: {fileID: 2308010291713586332}
-  herdBehavior: {fileID: 0}
+  herdBehavior: {fileID: 3824709886285963210}
 --- !u!114 &4887184401067980003
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -611,9 +611,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf64a809b56845147bb823392657e12b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AnimalHealth
-  dieTrigger: die
+  dieTrigger: Die
   dieStateName: Die
-  disableDelayAfterDeath: 5
+  disableDelayAfterDeath: 0
 --- !u!114 &7707745823924687852
 MonoBehaviour:
   m_ObjectHideFlags: 0

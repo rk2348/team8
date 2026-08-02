@@ -410,8 +410,8 @@ MonoBehaviour:
   idleWeight: 1
   walkWeight: 3
   eatWeight: 1
-  fleeBehavior: {fileID: 0}
-  herdBehavior: {fileID: 0}
+  fleeBehavior: {fileID: 1753839505617019560}
+  herdBehavior: {fileID: 1542685311390733274}
 --- !u!114 &1753839505617019560
 MonoBehaviour:
   m_ObjectHideFlags: 0
