@@ -1,6 +1,5 @@
 using UnityEngine;
 using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 
 /// <summary>
@@ -12,19 +11,12 @@ using TMPro;
 /// その状態でAボタンを押すと、
 /// 1) パネル・モデルが縮小しながら高速に下へ落下して消え、
 /// 2) このスクリプトがアタッチされているオブジェクト自身も、一定時間待ってからX軸方向へ
-///    ゆっくり回転し、回転完了後に複数のWaypointを経由しながら移動する(速度は一括管理)。
+///    ゆっくり回転し、
+/// 3) 回転完了後、ObjectMoverが付いた別オブジェクトの移動を開始させ、
+///    このオブジェクト自身はその移動を追従する(一定のオフセット・追従の緩やかさで)。
 /// </summary>
 public class TitleManager : MonoBehaviour
 {
-    [System.Serializable]
-    public class MoveWaypoint
-    {
-        [Tooltip("経由するTransform")]
-        public Transform point;
-        [Tooltip("到着後の待機時間(秒)")]
-        [Min(0f)] public float waitTime = 0f;
-    }
-
     [Header("対象のBGM")]
     [Tooltip("フェードインさせるBGM用のAudioSource")]
     public AudioSource bgmSource;
@@ -95,17 +87,17 @@ public class TitleManager : MonoBehaviour
     [Tooltip("回転の緩急を付けるカーブ")]
     public AnimationCurve selfRotateCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
-    [Header("自分自身(このオブジェクト)の移動設定(回転完了後、Waypoint経由)")]
-    [Tooltip("回転完了後に経由していくポイントのリスト")]
-    public List<MoveWaypoint> selfMoveRoute = new List<MoveWaypoint>();
-    [Tooltip("全区間で共通して使う移動速度(メートル/秒)")]
-    [Min(0.1f)] public float selfMoveSpeed = 20f;
-    [Tooltip("進行方向を向くかどうか(Waypoint移動中)")]
-    public bool selfMoveLookAtTarget = true;
+    [Header("追従移動の設定(ObjectMoverを追いかける)")]
+    [Tooltip("移動を開始させ、このオブジェクトが追従する対象のObjectMover")]
+    public ObjectMover moverToFollow;
+    [Tooltip("追従時、対象からどれだけずらした位置を保つか(ワールド空間のオフセット)")]
+    public Vector3 followOffset = Vector3.zero;
+    [Tooltip("追従の滑らかさ。小さいほどピッタリ追従し、大きいほど遅れて追従する(秒)")]
+    public float followSmoothTime = 0.3f;
+    [Tooltip("追従中、対象の方向を向くかどうか")]
+    public bool followLookAtMover = true;
     [Tooltip("向きを合わせる速さ")]
-    public float selfMoveRotationSpeed = 10f;
-    [Tooltip("ONにするとWaypoint間を滑らかな曲線(Catmull-Romスプライン)で移動する")]
-    public bool selfMoveUseSmoothCurve = true;
+    public float followRotationSpeed = 10f;
 
     private Coroutine fadeCoroutine;
     private Coroutine panelCoroutine;
@@ -113,7 +105,9 @@ public class TitleManager : MonoBehaviour
     private Coroutine panelDelayCoroutine;
     private Coroutine modelDelayCoroutine;
     private Coroutine exitCoroutine;
-    private Coroutine selfRotateAndMoveCoroutine;
+    private Coroutine selfRotateCoroutine;
+    private Coroutine followCoroutine;
+    private Vector3 followVelocity;
 
     // 両方の登場アニメーションが完了したかどうかを個別に管理
     private bool panelRiseUpDone = false;
@@ -157,7 +151,7 @@ public class TitleManager : MonoBehaviour
             }
 
             StartExitSequence();
-            StartSelfRotateAndFastMove();
+            StartSelfRotateThenFollow();
         }
     }
 
@@ -396,18 +390,18 @@ public class TitleManager : MonoBehaviour
     /// <summary>
     /// Aボタンが押されたときに呼ぶ。selfRotateDelay秒待ってから、
     /// このオブジェクト自身をX軸方向へゆっくり回転させ、
-    /// 回転が完了したらselfMoveRouteのWaypointを順に経由しながら移動する。
+    /// 回転が完了したらmoverToFollowの移動を開始させ、以降その動きを追従し続ける。
     /// </summary>
-    public void StartSelfRotateAndFastMove()
+    public void StartSelfRotateThenFollow()
     {
-        if (selfRotateAndMoveCoroutine != null)
+        if (selfRotateCoroutine != null)
         {
-            StopCoroutine(selfRotateAndMoveCoroutine);
+            StopCoroutine(selfRotateCoroutine);
         }
-        selfRotateAndMoveCoroutine = StartCoroutine(SelfRotateThenMoveRoutine());
+        selfRotateCoroutine = StartCoroutine(SelfRotateThenFollowRoutine());
     }
 
-    private IEnumerator SelfRotateThenMoveRoutine()
+    private IEnumerator SelfRotateThenFollowRoutine()
     {
         // 1. 一定時間待つ
         if (selfRotateDelay > 0f)
@@ -432,136 +426,55 @@ public class TitleManager : MonoBehaviour
         }
         transform.localRotation = targetRotation;
 
-        // 3. 回転完了後、Waypointを順に経由しながら移動する(速度はselfMoveSpeedで一括管理)
-        yield return StartCoroutine(FollowSelfMoveRoute());
-
-        selfRotateAndMoveCoroutine = null;
-        Debug.Log("自分自身の回転・Waypoint移動演出が終了しました。");
-    }
-
-    /// <summary>
-    /// selfMoveRouteに登録されたWaypointを順番に、Catmull-Romスプラインで滑らかに経由しながら移動する。
-    /// </summary>
-    private IEnumerator FollowSelfMoveRoute()
-    {
-        if (selfMoveRoute == null || selfMoveRoute.Count == 0)
+        // 3. 回転完了後、対象のObjectMoverの移動を開始させ、その動きを追従し続ける
+        if (moverToFollow != null)
         {
-            yield break;
-        }
+            moverToFollow.BeginMovement();
 
-        Vector3 currentPos = transform.position;
-
-        for (int i = 0; i < selfMoveRoute.Count; i++)
-        {
-            MoveWaypoint wp = selfMoveRoute[i];
-            if (wp.point == null) continue;
-
-            Vector3 prevPoint = i > 0 && selfMoveRoute[i - 1].point != null
-                ? selfMoveRoute[i - 1].point.position
-                : currentPos;
-            Vector3 nextPoint = (i + 1 < selfMoveRoute.Count && selfMoveRoute[i + 1].point != null)
-                ? selfMoveRoute[i + 1].point.position
-                : wp.point.position;
-
-            yield return StartCoroutine(MoveToWaypoint(wp, currentPos, prevPoint, nextPoint, (newPos) => currentPos = newPos));
-
-            if (wp.waitTime > 0f)
+            if (followCoroutine != null)
             {
-                yield return new WaitForSeconds(wp.waitTime);
+                StopCoroutine(followCoroutine);
             }
+            followCoroutine = StartCoroutine(FollowMoverRoutine());
         }
+
+        selfRotateCoroutine = null;
+        Debug.Log("自分自身の回転が終了し、ObjectMoverの追従を開始しました。");
     }
 
     /// <summary>
-    /// 1区間分の移動。selfMoveUseSmoothCurveがONなら前後のWaypointを考慮した
-    /// Catmull-Rom補間でカーブしながら進む。速度は全区間共通のselfMoveSpeedを使う。
+    /// moverToFollowが移動している間、自分自身をその位置(+オフセット)へ滑らかに追従させる。
+    /// moverToFollowの移動が完了(IsMoving == false)した時点で追従を終了する。
     /// </summary>
-    private IEnumerator MoveToWaypoint(MoveWaypoint wp, Vector3 startPos, Vector3 prevPoint, Vector3 nextPoint, System.Action<Vector3> onUpdatePos)
+    private IEnumerator FollowMoverRoutine()
     {
-        Vector3 endPos = wp.point.position;
-        float distance = Vector3.Distance(startPos, endPos);
-        if (distance < 0.001f)
+        Transform target = moverToFollow.transform;
+
+        // 対象が移動を開始するまでの1フレームのズレに備え、移動中である間ずっと追従し続ける
+        while (moverToFollow != null && moverToFollow.IsMoving)
         {
-            onUpdatePos?.Invoke(endPos);
-            yield break;
-        }
+            Vector3 desiredPos = target.position + followOffset;
+            transform.position = Vector3.SmoothDamp(transform.position, desiredPos, ref followVelocity, followSmoothTime);
 
-        float duration = distance / selfMoveSpeed;
-        float elapsed = 0f;
-
-        Vector3 p0 = prevPoint;
-        Vector3 p1 = startPos;
-        Vector3 p2 = endPos;
-        Vector3 p3 = nextPoint;
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
-
-            Vector3 targetPosition = selfMoveUseSmoothCurve
-                ? CatmullRom(p0, p1, p2, p3, t)
-                : Vector3.Lerp(p1, p2, t);
-
-            transform.position = targetPosition;
-
-            if (selfMoveLookAtTarget)
+            if (followLookAtMover)
             {
-                float lookAheadT = Mathf.Clamp01(t + 0.05f);
-                Vector3 lookAheadPos = selfMoveUseSmoothCurve
-                    ? CatmullRom(p0, p1, p2, p3, lookAheadT)
-                    : Vector3.Lerp(p1, p2, lookAheadT);
-
-                Vector3 direction = lookAheadPos - targetPosition;
+                Vector3 direction = target.position - transform.position;
                 if (direction.sqrMagnitude > 0.0001f)
                 {
-                    Quaternion targetRotation = Quaternion.LookRotation(direction.normalized);
-                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, selfMoveRotationSpeed * Time.deltaTime);
+                    Quaternion targetRot = Quaternion.LookRotation(direction.normalized);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, followRotationSpeed * Time.deltaTime);
                 }
             }
-
-            onUpdatePos?.Invoke(targetPosition);
 
             yield return null;
         }
 
-        transform.position = endPos;
-        onUpdatePos?.Invoke(endPos);
-    }
-
-    /// <summary>
-    /// Catmull-Romスプライン補間。p1→p2の間を、前後の制御点p0・p3を考慮して滑らかに補間する。
-    /// </summary>
-    private static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
-    {
-        float t2 = t * t;
-        float t3 = t2 * t;
-
-        return 0.5f * (
-            (2f * p1) +
-            (-p0 + p2) * t +
-            (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
-            (-p0 + 3f * p1 - 3f * p2 + p3) * t3
-        );
-    }
-
-    private void OnDrawGizmos()
-    {
-        if (selfMoveRoute == null || selfMoveRoute.Count < 2) return;
-
-        Gizmos.color = Color.cyan;
-        for (int i = 0; i < selfMoveRoute.Count - 1; i++)
+        // 対象が停止したら、最終位置にぴったり合わせて追従を終える
+        if (moverToFollow != null)
         {
-            if (selfMoveRoute[i].point != null && selfMoveRoute[i + 1].point != null)
-            {
-                Gizmos.DrawLine(selfMoveRoute[i].point.position, selfMoveRoute[i + 1].point.position);
-                Gizmos.DrawWireSphere(selfMoveRoute[i].point.position, 0.2f);
-            }
+            transform.position = target.position + followOffset;
         }
 
-        if (selfMoveRoute[selfMoveRoute.Count - 1].point != null)
-        {
-            Gizmos.DrawWireSphere(selfMoveRoute[selfMoveRoute.Count - 1].point.position, 0.2f);
-        }
+        followCoroutine = null;
     }
 }

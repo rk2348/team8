@@ -29,6 +29,8 @@ public class ObjectMover : MonoBehaviour
     private List<Waypoint> route = new List<Waypoint>();
     [SerializeField, Tooltip("最後まで行ったら最初に戻るか")]
     private bool loop = false;
+    [SerializeField, Tooltip("ONの場合Start()時に自動で移動を開始する。OFFの場合はBeginMovement()を外部から呼ぶまで待機する")]
+    private bool autoStart = true;
 
     [Header("移動速度の設定(全区間共通)")]
     [SerializeField, Tooltip("全区間で共通して使う移動速度(メートル/秒)")]
@@ -49,6 +51,7 @@ public class ObjectMover : MonoBehaviour
     // 内部ステータス
     private Coroutine _pathCoroutine;
     private bool _isPaused = false;
+    private bool _hasStarted = false;
 
     // 複数のAudioSourceを管理するリスト
     private List<AudioSource> _audioSources = new List<AudioSource>();
@@ -62,6 +65,11 @@ public class ObjectMover : MonoBehaviour
         set => moveSpeed = Mathf.Max(0.1f, value);
     }
 
+    /// <summary>
+    /// 現在移動シーケンスが進行中かどうか。
+    /// </summary>
+    public bool IsMoving => _pathCoroutine != null;
+
     void Awake()
     {
         AudioSource initialSource = GetComponent<AudioSource>();
@@ -74,11 +82,31 @@ public class ObjectMover : MonoBehaviour
 
     void Start()
     {
+        if (autoStart)
+        {
+            BeginMovement();
+        }
+    }
+
+    /// <summary>
+    /// 外部(TitleManagerなど)から呼び出し、Waypointに沿った移動を開始する。
+    /// 一度開始すると、ルートの最後まで(loopがONなら回り続ける)自動で進行する。
+    /// 既に移動中の場合は何もしない(二重起動を防ぐ)。
+    /// </summary>
+    public void BeginMovement()
+    {
+        if (_hasStarted && _pathCoroutine != null)
+        {
+            return; // 既に移動中なら無視する
+        }
+
         if (route == null || route.Count == 0)
         {
             Debug.LogWarning($"{gameObject.name}: Waypointが設定されていません。");
             return;
         }
+
+        _hasStarted = true;
         _pathCoroutine = StartCoroutine(FollowPathRoutine());
     }
 
@@ -129,10 +157,13 @@ public class ObjectMover : MonoBehaviour
                 else
                 {
                     ResetMedia();
+                    _pathCoroutine = null;
                     yield break;
                 }
             }
         }
+
+        _pathCoroutine = null;
     }
 
     /// <summary>
@@ -152,7 +183,6 @@ public class ObjectMover : MonoBehaviour
         float duration = distance / moveSpeed;
         float elapsed = 0f;
 
-        // Catmull-Rom用の制御点(始点の前・終点の後ろ)
         Vector3 p0 = prevPoint;
         Vector3 p1 = startPos;
         Vector3 p2 = endPos;
@@ -173,7 +203,6 @@ public class ObjectMover : MonoBehaviour
 
             if (lookAtTarget)
             {
-                // ほんの少し先の点を見ることで、カーブの接線方向に自然に向きを合わせる
                 float lookAheadT = Mathf.Clamp01(t + 0.05f);
                 Vector3 lookAheadPos = useSmoothCurve
                     ? CatmullRom(p0, p1, p2, p3, lookAheadT)
@@ -196,10 +225,6 @@ public class ObjectMover : MonoBehaviour
         onUpdateLogicPos?.Invoke(endPos);
     }
 
-    /// <summary>
-    /// Catmull-Romスプライン補間。p1→p2の間を、前後の制御点p0・p3を考慮して滑らかに補間する。
-    /// 折れ線ではなく曲線として経路をつなぐことで、Waypoint通過時のカクつきを解消する。
-    /// </summary>
     private static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
     {
         float t2 = t * t;
