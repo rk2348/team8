@@ -5,8 +5,8 @@ using UnityEngine.AI;
 /// <summary>
 /// 動物への憑依・解除を管理するスクリプト。
 /// 距離判定によるAボタンでの憑依、Bボタンでの解除、視点・位置の同期、
-/// HUD表示(ミッション・体力・空腹・危険度・スコア)、鳴き声、
-/// 狩りアクション(トラ等)、憑依中のNPC AI停止までを担当する。
+/// HUD表示(ステータス・ミッション完了・スコア)、鳴き声、
+/// 狩りアクション(トラ等)、憑依中のNPC AI停止、スコア算出までを担当する。
 /// </summary>
 public class AnimalViewSwitch : MonoBehaviour
 {
@@ -63,9 +63,22 @@ public class AnimalViewSwitch : MonoBehaviour
     private bool missionCompleted = false;
 
     [Header("スコアの設定")]
-    [Tooltip("1回の狩り成功で加算されるスコア")]
-    public int huntScoreValue = 100;
+    [Tooltip("狩り成功で必ず加算される基礎スコア")]
+    public int baseScoreValue = 50;
+    [Tooltip("『憑依してから逃げ出すまでの時間』1秒あたりの加点(長く気づかれなかったほど高評価)")]
+    public float scorePerSecondBeforeFlee = 10f;
+    [Tooltip("この秒数までは気づかれボーナスなし(この秒数を超えた分だけ加点)")]
+    public float stealthGraceTime = 2f;
+    [Tooltip("『シカが逃げていた時間』1秒あたりの減点(追跡に時間がかかるほど低評価)")]
+    public float penaltyPerSecondFleeing = 5f;
+    [Tooltip("『近づいてから倒すまでの時間』の基準タイム(秒)。これより速いほど加点")]
+    public float huntSpeedBenchmark = 3f;
+    [Tooltip("基準タイムより1秒速いごとの加点")]
+    public float scorePerSecondFasterHunt = 15f;
+
     private int currentScore = 0;
+    private float possessTime = -1f;   // 憑依した時刻(「逃げ出すまでの時間」の起点)
+    private float huntStartTime = -1f; // 狩り(接近して攻撃ボタンを押した)を開始した時刻
 
     [Header("憑依中に停止させるAIコンポーネント")]
     [Tooltip("この動物のAnimalIdleBehavior(徘徊AI)")]
@@ -172,6 +185,8 @@ public class AnimalViewSwitch : MonoBehaviour
     {
         isPossessing = true;
         missionCompleted = false; // 憑依のたびにミッション状態をリセット
+        possessTime = Time.time;  // 憑依した瞬間を記録(スコア計算の起点)
+        huntStartTime = -1f;
 
         // 憑依前の状態を保存(解除時に元へ戻すため)
         originalParent = animalRoot.parent;
@@ -282,6 +297,7 @@ public class AnimalViewSwitch : MonoBehaviour
                 float distance = Vector3.Distance(animalRoot.position, target.transform.position);
                 if (distance <= huntRange)
                 {
+                    huntStartTime = Time.time; // 「近づいてから倒すまでの時間」の起点
                     StartCoroutine(HuntSequence(target));
                     return; // 狩りを実行したら鳴き声は鳴らさない
                 }
@@ -308,15 +324,16 @@ public class AnimalViewSwitch : MonoBehaviour
 
         yield return new WaitForSeconds(attackAnimDuration);
 
-        // 攻撃後、対象を死亡させる
         var targetHealth = target.GetComponent<AnimalHealth>();
+        var targetFlee = target.GetComponent<FleeFromPredators>();
+
         if (targetHealth != null)
         {
             targetHealth.Kill();
         }
 
         missionCompleted = true;
-        currentScore += huntScoreValue;
+        currentScore = CalculateScore(targetFlee);
 
         // ミッション完了パネル→スコアパネルの流れをHUD側に任せる
         if (hudController != null)
@@ -324,7 +341,40 @@ public class AnimalViewSwitch : MonoBehaviour
             hudController.ShowMissionComplete(currentScore);
         }
 
-        Debug.Log($"狩りに成功しました。現在のスコア: {currentScore}");
+        Debug.Log($"狩りに成功しました。スコア: {currentScore}");
+    }
+
+    /// <summary>
+    /// 「憑依→逃走開始までの時間」「逃走していた時間」「接近→仕留めるまでの時間」の
+    /// 3要素から最終スコアを算出する。
+    /// </summary>
+    private int CalculateScore(FleeFromPredators targetFlee)
+    {
+        float score = baseScoreValue;
+
+        // 1. 憑依してから、シカが逃げ出すまでの時間(長いほど加点=気づかれず接近できた)
+        if (targetFlee != null && targetFlee.FleeStartTime >= 0f && possessTime >= 0f)
+        {
+            float timeBeforeFlee = Mathf.Max(0f, targetFlee.FleeStartTime - possessTime);
+            if (timeBeforeFlee > stealthGraceTime)
+            {
+                score += (timeBeforeFlee - stealthGraceTime) * scorePerSecondBeforeFlee;
+            }
+        }
+
+        // 2. シカが逃げていた時間(長いほど減点=追跡に手間取った)
+        float fleeDuration = targetFlee != null ? targetFlee.LastFleeDuration : 0f;
+        score -= fleeDuration * penaltyPerSecondFleeing;
+
+        // 3. 近づいてから倒すまでの時間(短いほど加点=一瞬で仕留めた)
+        float huntDuration = huntStartTime >= 0f ? (Time.time - huntStartTime) : huntSpeedBenchmark;
+        float diff = huntSpeedBenchmark - huntDuration;
+        if (diff > 0f)
+        {
+            score += diff * scorePerSecondFasterHunt;
+        }
+
+        return Mathf.Max(0, Mathf.RoundToInt(score));
     }
 
     private void PlayCry()

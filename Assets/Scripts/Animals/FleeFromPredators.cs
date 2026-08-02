@@ -2,18 +2,30 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
+/// <summary>
+/// シーン内の"Predator"コンポーネントを持つ全ての捕食者を警戒し、
+/// 一定距離以内に近づくと最も近い捕食者から逃げる汎用スクリプト。
+/// 牛・馬・シマウマ・シカ・ウサギ・ゾウなど、被食者となる動物すべてに使い回せる。
+/// </summary>
 [RequireComponent(typeof(NavMeshAgent))]
 public class FleeFromPredators : MonoBehaviour
 {
     [Header("逃走の設定")]
+    [Tooltip("この距離より近づくと逃げ始める(メートル)")]
     public float detectionRadius = 8f;
+    [Tooltip("逃げる際の移動距離(捕食者と反対方向にどれだけ走るか)")]
     public float fleeDistance = 12f;
+    [Tooltip("通常時の移動速度")]
     public float normalSpeed = 2f;
+    [Tooltip("逃走時の移動速度")]
     public float fleeSpeed = 6f;
+    [Tooltip("逃走中に再度目的地を再計算する間隔(秒)")]
     public float fleeUpdateInterval = 0.5f;
+    [Tooltip("捕食者の再探索を行う間隔(秒)。重い処理なので毎フレームは避ける")]
     public float predatorSearchInterval = 1.0f;
 
     [Header("アニメーションの設定")]
+    [Tooltip("この動物のAnimatorコンポーネント")]
     public Animator animator;
     [Tooltip("逃走開始時に発火するTrigger名")]
     public string runTrigger = "Run";
@@ -24,7 +36,19 @@ public class FleeFromPredators : MonoBehaviour
     [SerializeField] private bool isFleeing = false;
     [SerializeField] private Predator currentThreat;
 
+    // 外部(AnimalIdleBehaviorやPredatorAI、AnimalViewSwitchなど)から参照するための公開プロパティ
     public bool IsFleeing => isFleeing;
+
+    /// <summary>
+    /// 現在(または直近)の逃走が開始された時刻(Time.time)。逃走したことが一度も無ければ-1。
+    /// スコア計算(憑依?逃走開始までの経過時間の算出)に使用する。
+    /// </summary>
+    public float FleeStartTime { get; private set; } = -1f;
+
+    /// <summary>
+    /// 直近の逃走にかかった時間(秒)。逃走が終わる(または死亡する)たびに確定する。
+    /// </summary>
+    public float LastFleeDuration { get; private set; } = 0f;
 
     private NavMeshAgent agent;
     private float fleeTimer = 0f;
@@ -64,11 +88,12 @@ public class FleeFromPredators : MonoBehaviour
             if (!isFleeing)
             {
                 isFleeing = true;
+                FleeStartTime = Time.time; // 逃走開始時刻を記録
                 agent.speed = fleeSpeed;
 
                 if (animator != null)
                 {
-                    animator.SetTrigger(runTrigger); // Boolではなく、開始した瞬間だけTriggerを発火
+                    animator.SetTrigger(runTrigger);
                 }
             }
 
@@ -126,23 +151,40 @@ public class FleeFromPredators : MonoBehaviour
         if (isFleeing)
         {
             isFleeing = false;
+            ConfirmFleeDuration();
+
             agent.speed = normalSpeed;
             agent.ResetPath();
 
             if (animator != null)
             {
-                animator.SetTrigger(idleTrigger); // Boolではなく、終了した瞬間だけTriggerを発火
+                animator.SetTrigger(idleTrigger);
             }
         }
     }
 
     /// <summary>
+    /// 逃走中に記録していた開始時刻から、経過時間をLastFleeDurationとして確定させる。
+    /// </summary>
+    private void ConfirmFleeDuration()
+    {
+        if (FleeStartTime >= 0f)
+        {
+            LastFleeDuration = Time.time - FleeStartTime;
+        }
+    }
+
+    /// <summary>
     /// 捕食されて死亡するときに、AnimalHealth.Kill()から呼び出す。
-    /// 移動のみを止める。AnimatorはTrigger方式になったため、
-    /// 死亡時にRun関連のパラメータをリセットする必要はない。
+    /// 移動のみを止め、逃走時間を確定させる。
     /// </summary>
     public void StopForDeath()
     {
+        if (isFleeing)
+        {
+            ConfirmFleeDuration();
+        }
+
         isFleeing = false;
         currentThreat = null;
 
