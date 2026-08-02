@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 
 /// <summary>
@@ -11,10 +12,19 @@ using TMPro;
 /// その状態でAボタンを押すと、
 /// 1) パネル・モデルが縮小しながら高速に下へ落下して消え、
 /// 2) このスクリプトがアタッチされているオブジェクト自身も、一定時間待ってからX軸方向へ
-///    ゆっくり回転し、回転完了後に素早く前方へ移動する。
+///    ゆっくり回転し、回転完了後に複数のWaypointを経由しながら移動する(速度は一括管理)。
 /// </summary>
 public class TitleManager : MonoBehaviour
 {
+    [System.Serializable]
+    public class MoveWaypoint
+    {
+        [Tooltip("経由するTransform")]
+        public Transform point;
+        [Tooltip("到着後の待機時間(秒)")]
+        [Min(0f)] public float waitTime = 0f;
+    }
+
     [Header("対象のBGM")]
     [Tooltip("フェードインさせるBGM用のAudioSource")]
     public AudioSource bgmSource;
@@ -75,7 +85,7 @@ public class TitleManager : MonoBehaviour
     [Tooltip("退場の動きに緩急を付けるカーブ(急加速するイメージ)")]
     public AnimationCurve exitCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
-    [Header("自分自身(このオブジェクト)の演出設定(Aボタンで発動)")]
+    [Header("自分自身(このオブジェクト)の回転設定(Aボタンで発動)")]
     [Tooltip("Aボタン押下から、回転を始めるまでの待機時間(秒)")]
     public float selfRotateDelay = 1.0f;
     [Tooltip("回転にかける時間(秒)。ゆっくり回転させたい場合は長めに")]
@@ -84,14 +94,18 @@ public class TitleManager : MonoBehaviour
     public float selfRotationX = 90f;
     [Tooltip("回転の緩急を付けるカーブ")]
     public AnimationCurve selfRotateCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
-    [Tooltip("回転後、どの方向へ素早く移動するか(ローカル空間の軸)")]
-    public Vector3 selfMoveLocalDirection = Vector3.forward;
-    [Tooltip("移動する距離(メートル)")]
-    public float selfMoveDistance = 20f;
-    [Tooltip("移動にかける時間(秒)。短いほど『素早く』見える")]
-    public float selfMoveDuration = 0.3f;
-    [Tooltip("移動の緩急を付けるカーブ(急加速するイメージ)")]
-    public AnimationCurve selfMoveCurve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+
+    [Header("自分自身(このオブジェクト)の移動設定(回転完了後、Waypoint経由)")]
+    [Tooltip("回転完了後に経由していくポイントのリスト")]
+    public List<MoveWaypoint> selfMoveRoute = new List<MoveWaypoint>();
+    [Tooltip("全区間で共通して使う移動速度(メートル/秒)")]
+    [Min(0.1f)] public float selfMoveSpeed = 20f;
+    [Tooltip("進行方向を向くかどうか(Waypoint移動中)")]
+    public bool selfMoveLookAtTarget = true;
+    [Tooltip("向きを合わせる速さ")]
+    public float selfMoveRotationSpeed = 10f;
+    [Tooltip("ONにするとWaypoint間を滑らかな曲線(Catmull-Romスプライン)で移動する")]
+    public bool selfMoveUseSmoothCurve = true;
 
     private Coroutine fadeCoroutine;
     private Coroutine panelCoroutine;
@@ -286,7 +300,6 @@ public class TitleManager : MonoBehaviour
 
         if (promptObject != null)
         {
-            // TMP_Textが付いていれば文言を設定する(TextMeshPro/TextMeshProUGUIどちらでも対応)
             var tmpText = promptObject.GetComponentInChildren<TMP_Text>(true);
             if (tmpText != null)
             {
@@ -383,7 +396,7 @@ public class TitleManager : MonoBehaviour
     /// <summary>
     /// Aボタンが押されたときに呼ぶ。selfRotateDelay秒待ってから、
     /// このオブジェクト自身をX軸方向へゆっくり回転させ、
-    /// 回転が完了したら素早くローカル方向へ移動させる。
+    /// 回転が完了したらselfMoveRouteのWaypointを順に経由しながら移動する。
     /// </summary>
     public void StartSelfRotateAndFastMove()
     {
@@ -419,25 +432,136 @@ public class TitleManager : MonoBehaviour
         }
         transform.localRotation = targetRotation;
 
-        // 3. 回転完了後、回転済みの向きを基準に素早く移動する
-        Vector3 startPos = transform.localPosition;
-        Vector3 moveDirection = transform.TransformDirection(selfMoveLocalDirection.normalized);
-        Vector3 targetPos = startPos + moveDirection * selfMoveDistance;
+        // 3. 回転完了後、Waypointを順に経由しながら移動する(速度はselfMoveSpeedで一括管理)
+        yield return StartCoroutine(FollowSelfMoveRoute());
 
-        float moveElapsed = 0f;
-        while (moveElapsed < selfMoveDuration)
+        selfRotateAndMoveCoroutine = null;
+        Debug.Log("自分自身の回転・Waypoint移動演出が終了しました。");
+    }
+
+    /// <summary>
+    /// selfMoveRouteに登録されたWaypointを順番に、Catmull-Romスプラインで滑らかに経由しながら移動する。
+    /// </summary>
+    private IEnumerator FollowSelfMoveRoute()
+    {
+        if (selfMoveRoute == null || selfMoveRoute.Count == 0)
         {
-            moveElapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(moveElapsed / selfMoveDuration);
-            float curved = selfMoveCurve.Evaluate(t);
+            yield break;
+        }
 
-            transform.localPosition = Vector3.Lerp(startPos, targetPos, curved);
+        Vector3 currentPos = transform.position;
+
+        for (int i = 0; i < selfMoveRoute.Count; i++)
+        {
+            MoveWaypoint wp = selfMoveRoute[i];
+            if (wp.point == null) continue;
+
+            Vector3 prevPoint = i > 0 && selfMoveRoute[i - 1].point != null
+                ? selfMoveRoute[i - 1].point.position
+                : currentPos;
+            Vector3 nextPoint = (i + 1 < selfMoveRoute.Count && selfMoveRoute[i + 1].point != null)
+                ? selfMoveRoute[i + 1].point.position
+                : wp.point.position;
+
+            yield return StartCoroutine(MoveToWaypoint(wp, currentPos, prevPoint, nextPoint, (newPos) => currentPos = newPos));
+
+            if (wp.waitTime > 0f)
+            {
+                yield return new WaitForSeconds(wp.waitTime);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 1区間分の移動。selfMoveUseSmoothCurveがONなら前後のWaypointを考慮した
+    /// Catmull-Rom補間でカーブしながら進む。速度は全区間共通のselfMoveSpeedを使う。
+    /// </summary>
+    private IEnumerator MoveToWaypoint(MoveWaypoint wp, Vector3 startPos, Vector3 prevPoint, Vector3 nextPoint, System.Action<Vector3> onUpdatePos)
+    {
+        Vector3 endPos = wp.point.position;
+        float distance = Vector3.Distance(startPos, endPos);
+        if (distance < 0.001f)
+        {
+            onUpdatePos?.Invoke(endPos);
+            yield break;
+        }
+
+        float duration = distance / selfMoveSpeed;
+        float elapsed = 0f;
+
+        Vector3 p0 = prevPoint;
+        Vector3 p1 = startPos;
+        Vector3 p2 = endPos;
+        Vector3 p3 = nextPoint;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+
+            Vector3 targetPosition = selfMoveUseSmoothCurve
+                ? CatmullRom(p0, p1, p2, p3, t)
+                : Vector3.Lerp(p1, p2, t);
+
+            transform.position = targetPosition;
+
+            if (selfMoveLookAtTarget)
+            {
+                float lookAheadT = Mathf.Clamp01(t + 0.05f);
+                Vector3 lookAheadPos = selfMoveUseSmoothCurve
+                    ? CatmullRom(p0, p1, p2, p3, lookAheadT)
+                    : Vector3.Lerp(p1, p2, lookAheadT);
+
+                Vector3 direction = lookAheadPos - targetPosition;
+                if (direction.sqrMagnitude > 0.0001f)
+                {
+                    Quaternion targetRotation = Quaternion.LookRotation(direction.normalized);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, selfMoveRotationSpeed * Time.deltaTime);
+                }
+            }
+
+            onUpdatePos?.Invoke(targetPosition);
 
             yield return null;
         }
-        transform.localPosition = targetPos;
 
-        selfRotateAndMoveCoroutine = null;
-        Debug.Log("自分自身の回転・高速移動演出が終了しました。");
+        transform.position = endPos;
+        onUpdatePos?.Invoke(endPos);
+    }
+
+    /// <summary>
+    /// Catmull-Romスプライン補間。p1→p2の間を、前後の制御点p0・p3を考慮して滑らかに補間する。
+    /// </summary>
+    private static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
+    {
+        float t2 = t * t;
+        float t3 = t2 * t;
+
+        return 0.5f * (
+            (2f * p1) +
+            (-p0 + p2) * t +
+            (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
+            (-p0 + 3f * p1 - 3f * p2 + p3) * t3
+        );
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (selfMoveRoute == null || selfMoveRoute.Count < 2) return;
+
+        Gizmos.color = Color.cyan;
+        for (int i = 0; i < selfMoveRoute.Count - 1; i++)
+        {
+            if (selfMoveRoute[i].point != null && selfMoveRoute[i + 1].point != null)
+            {
+                Gizmos.DrawLine(selfMoveRoute[i].point.position, selfMoveRoute[i + 1].point.position);
+                Gizmos.DrawWireSphere(selfMoveRoute[i].point.position, 0.2f);
+            }
+        }
+
+        if (selfMoveRoute[selfMoveRoute.Count - 1].point != null)
+        {
+            Gizmos.DrawWireSphere(selfMoveRoute[selfMoveRoute.Count - 1].point.position, 0.2f);
+        }
     }
 }

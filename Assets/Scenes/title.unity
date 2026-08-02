@@ -1815,9 +1815,9 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  selfRotateDelay: 2
-  selfRotateDuration: 3
-  selfRotationX: 90
+  selfRotateDelay: 5
+  selfRotateDuration: 0
+  selfRotationX: 0
   selfRotateCurve:
     serializedVersion: 2
     m_Curve:
@@ -1842,33 +1842,11 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  selfMoveLocalDirection: {x: 0, y: -600, z: 0}
-  selfMoveDistance: -597
-  selfMoveDuration: 5
-  selfMoveCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
+  selfMoveRoute: []
+  selfMoveSpeed: 30
+  selfMoveLookAtTarget: 1
+  selfMoveRotationSpeed: 5
+  selfMoveUseSmoothCurve: 1
 --- !u!82 &1877603663
 AudioSource:
   m_ObjectHideFlags: 0
