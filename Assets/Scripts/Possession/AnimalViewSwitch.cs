@@ -5,8 +5,8 @@ using UnityEngine.AI;
 /// <summary>
 /// 動物への憑依・解除を管理するスクリプト。
 /// 距離判定によるAボタンでの憑依、Bボタンでの解除、視点・位置の同期、
-/// HUD表示(体力・空腹・危険度)、鳴き声、狩りアクション(トラ等)、
-/// 憑依中のNPC AI停止までを担当する。
+/// HUD表示(ミッション・体力・空腹・危険度・スコア)、鳴き声、
+/// 狩りアクション(トラ等)、憑依中のNPC AI停止までを担当する。
 /// </summary>
 public class AnimalViewSwitch : MonoBehaviour
 {
@@ -62,6 +62,11 @@ public class AnimalViewSwitch : MonoBehaviour
     public float attackAnimDuration = 1.0f;
     private bool missionCompleted = false;
 
+    [Header("スコアの設定")]
+    [Tooltip("1回の狩り成功で加算されるスコア")]
+    public int huntScoreValue = 100;
+    private int currentScore = 0;
+
     [Header("憑依中に停止させるAIコンポーネント")]
     [Tooltip("この動物のAnimalIdleBehavior(徘徊AI)")]
     public AnimalIdleBehavior idleBehavior;
@@ -109,7 +114,7 @@ public class AnimalViewSwitch : MonoBehaviour
             float distance = Vector3.Distance(animalRoot.position, playerRig.position);
             if (distance <= interactionDistance)
             {
-                // 接近時、「Aボタンで憑依する」等の案内を表示
+                // 接近時、「Aボタンで憑依する」等の案内パネルを表示
                 if (hudController != null)
                 {
                     hudController.ShowPossessPrompt();
@@ -122,21 +127,30 @@ public class AnimalViewSwitch : MonoBehaviour
             }
             else
             {
-                // 範囲外になったら案内を消す
+                // 範囲外になったら案内パネルを消す
                 if (hudController != null)
                 {
-                    hudController.HideActionText();
+                    hudController.HideActionPanels();
                 }
             }
         }
         else
         {
-            // 憑依中にAボタンが押されたらHUDパネルの表示/非表示を切り替える
+            // 憑依中にAボタンが押されたらステータスパネルの表示/非表示を切り替える
             if (OVRInput.GetDown(OVRInput.RawButton.A))
             {
                 if (hudController != null)
                 {
                     hudController.TogglePanels();
+                }
+            }
+
+            // 憑依中にXボタンが押されたらミッションパネルの表示を切り替える
+            if (OVRInput.GetDown(OVRInput.RawButton.X))
+            {
+                if (hudController != null)
+                {
+                    hudController.ToggleMissionView();
                 }
             }
 
@@ -200,7 +214,7 @@ public class AnimalViewSwitch : MonoBehaviour
             navAgent.enabled = false; // 無効化することでUpdate自体が呼ばれなくなり、勝手な移動を完全に防げる
         }
 
-        // HUD表示(体力・空腹・危険度)
+        // HUD表示(まずミッション→一定時間後に自動でステータスへ)
         if (hudController != null)
         {
             hudController.ShowHUD(currentHealth, maxHealth, currentHunger, maxHunger, dangerLevel);
@@ -302,8 +316,15 @@ public class AnimalViewSwitch : MonoBehaviour
         }
 
         missionCompleted = true;
+        currentScore += huntScoreValue;
 
-        Debug.Log("狩りに成功しました。");
+        // ミッション完了パネル→スコアパネルの流れをHUD側に任せる
+        if (hudController != null)
+        {
+            hudController.ShowMissionComplete(currentScore);
+        }
+
+        Debug.Log($"狩りに成功しました。現在のスコア: {currentScore}");
     }
 
     private void PlayCry()

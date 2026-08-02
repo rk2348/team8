@@ -1,14 +1,36 @@
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
+using System.Collections;
 
 /// <summary>
-/// 憑依中のHUD管理。体力・空腹・危険度の3パネルをスライダーで表示し、
-/// 憑依中はAボタンで表示/非表示をトグルできる。
-/// ActionTextは憑依の有無を問わず、状況に応じた操作案内を表示する。
+/// 憑依中のHUD管理。
+/// 憑依開始時はまずミッションパネルを表示し、一定時間後に自動で
+/// 体力・空腹・危険度の3パネル(ステータス)表示へ切り替わる。
+/// Xボタンでいつでもミッションを見返せ(その間ステータスは隠れる)、
+/// 同じXボタンでステータス表示に戻る。
+/// Aボタンはステータス全体(3パネル)の表示/非表示を切り替える。
+/// ミッション達成時は完了パネル→スコアパネルの順で自動表示する。
+/// テキストは使わず、パネル(GameObject)の表示/非表示とスライダーの数値のみで表現する。
 /// </summary>
 public class PossessionController : MonoBehaviour
 {
+    [Header("ミッションパネル")]
+    public GameObject missionPanel;
+    [Tooltip("憑依開始時、ミッションパネルを表示し続ける秒数(経過後は自動でステータス表示に切り替わる)")]
+    public float missionDisplayDuration = 4f;
+
+    [Header("ミッション完了パネル")]
+    public GameObject missionCompletePanel;
+    [Tooltip("完了パネルを表示し続ける秒数(経過後は自動でスコアパネルへ切り替わる)")]
+    public float missionCompleteDisplayDuration = 2.5f;
+
+    [Header("スコアパネル")]
+    public GameObject scorePanel;
+    [Tooltip("スコアをスライダーで表現する場合に使用(任意)")]
+    public Slider scoreSlider;
+    [Tooltip("スコアスライダーの最大値の目安")]
+    public float maxScoreForSlider = 1000f;
+
     [Header("パネル本体（憑依中だけ表示するオブジェクト）")]
     public GameObject healthPanel;
     public GameObject hungerPanel;
@@ -28,86 +50,166 @@ public class PossessionController : MonoBehaviour
     public Color dangerHighColor = Color.red;
     [Range(0f, 1f)] public float dangerHighThreshold = 0.7f;
 
-    [Header("操作案内テキスト(憑依前・憑依中で内容が変わる)")]
-    [Tooltip("ActionTextを表示するパネル本体(nullなら常時表示扱い)")]
-    public GameObject actionTextPanel;
-    public TextMeshProUGUI actionText;
-    [Tooltip("動物に近づいた際、憑依していないときに表示する文言(複数行可)")]
-    [TextArea(2, 5)]
-    public string possessPromptMessage = "Aボタンで憑依する";
-    [Tooltip("憑依中に表示する文言(複数行可)")]
-    [TextArea(2, 5)]
-    public string possessingActionMessage = "Aボタン:HUD表示切替\nBボタン:憑依解除";
+    [Header("操作案内パネル(憑依前・憑依中で表示を切り替え)")]
+    [Tooltip("憑依前、接近時に表示するパネル")]
+    public GameObject possessPromptPanel;
+    [Tooltip("憑依中に表示するパネル(操作案内)")]
+    public GameObject possessingActionPanel;
 
-    // 憑依中にAボタンで切り替えられる、パネル全体の表示/非表示フラグ
     private bool panelsVisible = true;
+    private bool missionViewActive = false;
+    private Coroutine autoSwitchCoroutine;
+    private Coroutine missionCompleteCoroutine;
 
     void Awake()
     {
-        SetAllPanelsActive(false);
-        HideActionText();
+        SetStatPanelsActive(false);
+        SetMissionPanelActive(false);
+        SetMissionCompletePanelActive(false);
+        SetScorePanelActive(false);
+        HideActionPanels();
     }
 
     /// <summary>
-    /// 憑依開始時に呼び出す。3パネルを表示し、初期値をセットする。
-    /// ActionTextも憑依中用の文言に切り替える。
+    /// 憑依開始時に呼び出す。まずミッションパネルを表示し、
+    /// missionDisplayDuration秒後に自動でステータス3パネルへ切り替える。
     /// </summary>
     public void ShowHUD(float currentHealth, float maxHealth, float currentHunger, float maxHunger, float dangerLevel)
     {
-        panelsVisible = true;
-        SetAllPanelsActive(true);
-
         UpdateHealth(currentHealth, maxHealth);
         UpdateHunger(currentHunger, maxHunger);
         UpdateDanger(dangerLevel);
 
-        ShowActionText(possessingActionMessage);
+        panelsVisible = true;
+
+        SetMissionCompletePanelActive(false);
+        SetScorePanelActive(false);
+
+        missionViewActive = true;
+        RefreshVisibility();
+
+        ShowPossessingActionPanel();
+
+        if (autoSwitchCoroutine != null) StopCoroutine(autoSwitchCoroutine);
+        autoSwitchCoroutine = StartCoroutine(AutoSwitchToStats());
+
+        Debug.Log("PossessionController: ShowHUD呼び出し完了。ミッションパネルを表示しました。");
+    }
+
+    private IEnumerator AutoSwitchToStats()
+    {
+        yield return new WaitForSeconds(missionDisplayDuration);
+        missionViewActive = false;
+        RefreshVisibility();
+        autoSwitchCoroutine = null;
     }
 
     /// <summary>
-    /// 憑依解除時に呼び出す。3パネルを非表示にする。
-    /// ActionTextも一旦非表示にする(接近判定はAnimalViewSwitch側が再度呼び出す)。
+    /// 憑依解除時に呼び出す。全パネルを非表示にする。
     /// </summary>
     public void HideHUD()
     {
-        panelsVisible = true; // 次回憑依時は必ず表示された状態から始まるようにリセット
-        SetAllPanelsActive(false);
+        if (autoSwitchCoroutine != null)
+        {
+            StopCoroutine(autoSwitchCoroutine);
+            autoSwitchCoroutine = null;
+        }
+        if (missionCompleteCoroutine != null)
+        {
+            StopCoroutine(missionCompleteCoroutine);
+            missionCompleteCoroutine = null;
+        }
 
-        HideActionText();
+        panelsVisible = true;
+        missionViewActive = false;
+
+        SetStatPanelsActive(false);
+        SetMissionPanelActive(false);
+        SetMissionCompletePanelActive(false);
+        SetScorePanelActive(false);
+        HideActionPanels();
     }
 
-    /// <summary>
-    /// Aボタンで呼び出す。表示中なら隠し、隠れているなら表示する。
-    /// </summary>
     public void TogglePanels()
     {
         panelsVisible = !panelsVisible;
-        SetAllPanelsActive(panelsVisible);
+        RefreshVisibility();
+    }
+
+    public void ToggleMissionView()
+    {
+        if (autoSwitchCoroutine != null)
+        {
+            StopCoroutine(autoSwitchCoroutine);
+            autoSwitchCoroutine = null;
+        }
+
+        missionViewActive = !missionViewActive;
+        RefreshVisibility();
     }
 
     /// <summary>
-    /// 憑依前、動物に接近したときに呼び出す。「Aボタンで憑依する」等の文言を表示する。
+    /// ミッション達成時に呼び出す。ステータス・ミッションパネルを隠し、
+    /// 「ミッション完了」パネル→一定時間後に自動でスコアパネルへ切り替える。
     /// </summary>
+    public void ShowMissionComplete(int score)
+    {
+        Debug.Log($"PossessionController: ShowMissionCompleteが呼ばれました。score={score}");
+
+        if (autoSwitchCoroutine != null)
+        {
+            StopCoroutine(autoSwitchCoroutine);
+            autoSwitchCoroutine = null;
+        }
+
+        missionViewActive = false;
+        SetStatPanelsActive(false);
+        SetMissionPanelActive(false);
+        HideActionPanels();
+
+        SetMissionCompletePanelActive(true);
+        SetScorePanelActive(false);
+
+        if (scoreSlider != null)
+        {
+            scoreSlider.maxValue = maxScoreForSlider;
+            scoreSlider.value = score;
+        }
+
+        if (missionCompleteCoroutine != null) StopCoroutine(missionCompleteCoroutine);
+        missionCompleteCoroutine = StartCoroutine(AutoSwitchToScore());
+    }
+
+    private IEnumerator AutoSwitchToScore()
+    {
+        yield return new WaitForSeconds(missionCompleteDisplayDuration);
+        SetMissionCompletePanelActive(false);
+        SetScorePanelActive(true);
+        missionCompleteCoroutine = null;
+    }
+
+    private void RefreshVisibility()
+    {
+        SetMissionPanelActive(missionViewActive);
+        SetStatPanelsActive(!missionViewActive && panelsVisible);
+    }
+
     public void ShowPossessPrompt()
     {
-        ShowActionText(possessPromptMessage);
+        if (possessPromptPanel != null) possessPromptPanel.SetActive(true);
+        if (possessingActionPanel != null) possessingActionPanel.SetActive(false);
     }
 
-    /// <summary>
-    /// 任意の文言でActionTextを表示する。
-    /// </summary>
-    public void ShowActionText(string message)
+    public void ShowPossessingActionPanel()
     {
-        if (actionTextPanel != null) actionTextPanel.SetActive(true);
-        if (actionText != null) actionText.text = message;
+        if (possessPromptPanel != null) possessPromptPanel.SetActive(false);
+        if (possessingActionPanel != null) possessingActionPanel.SetActive(true);
     }
 
-    /// <summary>
-    /// ActionTextを非表示にする(接近判定が外れたときなどに呼び出す)。
-    /// </summary>
-    public void HideActionText()
+    public void HideActionPanels()
     {
-        if (actionTextPanel != null) actionTextPanel.SetActive(false);
+        if (possessPromptPanel != null) possessPromptPanel.SetActive(false);
+        if (possessingActionPanel != null) possessingActionPanel.SetActive(false);
     }
 
     public void UpdateHealth(float currentHealth, float maxHealth)
@@ -143,10 +245,25 @@ public class PossessionController : MonoBehaviour
         }
     }
 
-    private void SetAllPanelsActive(bool active)
+    private void SetStatPanelsActive(bool active)
     {
         if (healthPanel != null) healthPanel.SetActive(active);
         if (hungerPanel != null) hungerPanel.SetActive(active);
         if (dangerPanel != null) dangerPanel.SetActive(active);
+    }
+
+    private void SetMissionPanelActive(bool active)
+    {
+        if (missionPanel != null) missionPanel.SetActive(active);
+    }
+
+    private void SetMissionCompletePanelActive(bool active)
+    {
+        if (missionCompletePanel != null) missionCompletePanel.SetActive(active);
+    }
+
+    private void SetScorePanelActive(bool active)
+    {
+        if (scorePanel != null) scorePanel.SetActive(active);
     }
 }
