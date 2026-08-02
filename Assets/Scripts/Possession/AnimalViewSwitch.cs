@@ -72,6 +72,8 @@ public class AnimalViewSwitch : MonoBehaviour
     public string attackTrigger = "Attack";
     [Tooltip("攻撃モーションが終わるまでの時間(秒)")]
     public float attackAnimDuration = 1.0f;
+    [Tooltip("狩り成功(対象を倒した)後、ミッション完了パネルを表示するまでの待機時間(秒)")]
+    public float missionCompletePanelDelay = 3.0f;
     private bool missionCompleted = false;
 
     [Header("スコアの設定")]
@@ -320,13 +322,16 @@ public class AnimalViewSwitch : MonoBehaviour
         var breakdown = CalculateScore(targetFlee);
         currentScore = breakdown.totalScore;
 
-        // ミッション完了パネル→スコアパネル(合計のみ)の流れをHUD側に任せる
+        Debug.Log($"狩りに成功しました。スコア: {breakdown.totalScore} (内訳: 潜伏{breakdown.stealthScore} / 追跡{breakdown.chaseScore} / 速度{breakdown.huntSpeedScore})");
+
+        // 倒した瞬間ではなく、少し間を置いてからミッション完了パネルを表示する
+        // (仕留めた直後の余韻・演出を見せてからパネルを出すため)
+        yield return new WaitForSeconds(missionCompletePanelDelay);
+
         if (hudController != null)
         {
             hudController.ShowMissionComplete(breakdown.totalScore);
         }
-
-        Debug.Log($"狩りに成功しました。スコア: {breakdown.totalScore} (内訳: 潜伏{breakdown.stealthScore} / 追跡{breakdown.chaseScore} / 速度{breakdown.huntSpeedScore})");
     }
 
     /// <summary>
