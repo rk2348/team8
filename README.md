@@ -585,7 +585,7 @@ Hackit2026の3日間の開催期間（実質開発時間：約16.5時間）で�
 | #001 | （例）憑依解除時に一瞬視点が地面にめり込む | 動物が移動中に憑依解除した場合 | 調査中。静止時に解除すれば発生しない |
 | #002 | `NavMeshAgent.remainingDistance`呼び出し時に例外（"can only be called on an active agent that has been placed on a NavMesh"） | 憑依中に動物がNavMesh範囲外へ移動した場合、スポーン位置がNavMesh外だった場合 | 解決済み。`AnimalIdleBehavior`/`PredatorAI`のUpdateに`agent.isOnNavMesh`チェックを追加し、憑依中は該当AIコンポーネント自体を無効化 |
 | #003 | 狩り対象を発見した動物のアニメーションが異常な速度で再生される | `PredatorAI`が索敵間隔（0.3秒）ごとに同じTriggerを再発火させていた | 解決済み。現在の行動状態（Watching/Stalking/Chasing）を保持し、状態が変化した時だけTriggerを発火するよう修正 |
-| #004 | 静止しているのにWalkアニメーションが再生される／移動中なのにIdleが再生される | Animatorに新旧2種類の遷移（Any State方式と個別State間の直接遷移）が混在し、一部の矢印で`Has Exit Time`がオンのまま残っていた | 🚧対応中。全遷移をAny State方式に統一し`Has Exit Time`をオフにする作業を実施中 |
+| #004 | 静止しているのにWalkアニメーションが再生される／移動中なのにIdleが再生される | Animatorに新旧2種類の遷移（Any State方式と個別State間の直接遷移）が混在し、一部の矢印で`Has Exit Time`がオンのまま残っていた | 対応中。全遷移をAny State方式に統一し`Has Exit Time`をオフにする作業を実施中 |
 | #005 | HUDのCanvasがVRで頭を動かしても追従しない | `viewpoint`にカメラの子ではなく`OVRCameraRig`ルートを参照していた（回転が伝わらない） | 解決済み。`CenterEyeAnchor`を直接参照し、`HUDFollowViewpoint`をカメラの子として付け替える方式に変更 |
 | #006 | 自動移動（`VRMovement`）が終了地点を通過してしまう | 1フレームの移動量が残り距離より大きい場合、目的地を追い越していた | 解決済み。1フレームの移動量を残り距離でクランプし、到達判定時に座標を最終的にピッタリ合わせる処理を追加 |
 | #007 | 自動移動の終着点で高さ(Y座標)が意図通りにならない・落下する | 当初は水平移動のみで高さを重力任せにしており、Character ControllerのCenter/Heightのオフセットも考慮していなかった | 解決済み。transform.positionを直接3軸制御する方式に統一し、開始・終了地点のYがそのまま反映されるよう変更（詳細は第27章） |
@@ -624,11 +624,11 @@ Hackit2026の3日間の開催期間（実質開発時間：約16.5時間）で�
 
 | # | 課題 | 原因 | 解決策 |
 | --- | --- | --- | --- |
-| F1 | 自動移動が終着点を通過してしまう | 1フレームあたりの移動量が残り距離より大きい場合、目的地を追い越してしまっていた | 1フレームで進む距離を残り距離でクランプし（`Mathf.Min`）、到達判定時には座標を最終的にピッタリ目的地へ合わせる処理を追加（#006） |
-| F2 | 終着点のY座標（高さ）が意図と異なる／落下する | 水平移動のみを制御し、高さは重力任せにしていたため、Character ControllerのCenter/Heightのオフセットとズレが生じていた | 開発初期はGround Raycastによる高さ自動補正を試みたが、ベイク済みモデルを扱う都合上「高さを固定したくない」という要望が出たため、最終的に**transform.positionでXYZ全軸を直接制御する方式**に統一。開始・終了地点のYがそのまま反映されるようにした（#007） |
-| F3 | 自動移動の開始直後・終了直後に「ストン」と落下する | `CharacterController.isGrounded`はMove()呼び出し後でないと正しく判定されず、最初の数フレームは強制的に`false`扱いになるため、重力が過剰に加算されていた | `Start()`内で一度だけ小さく下方向にMove()して`isGrounded`を正しく初期化する処理と、自動移動終了時に`verticalVelocity`をリセットする処理を追加（#008） |
-| F4 | 自動移動終了後、その場から一切動けなくなる | transform.position直接制御は衝突判定を経由しないため、着地位置によってはCharacter Controllerのカプセルが地形にわずかにめり込むことがあり、次のMove()呼び出し時にめり込みが解消できず固まっていた | 到着直後に`Physics.OverlapCapsule`と`Physics.ComputePenetration`でめり込みを検出し、自動的に押し出す処理を追加。ただし通常の接地時に発生するSkin Width程度のごく僅かな重なりまで押し出すと逆に浮いてしまうため、**Skin Widthを超える明らかな異常なめり込みのみ**を対象にするよう調整（#009） |
-| F5 | Quest実機で、実際にヘッドセットに映像が表示される前にキャラクターが動き出してしまう | `Start()`時点ではOVRのHMDトラッキング・VRフォーカスの確立前であり、その状態でCharacterController.Move()を呼ぶと、ユーザーが気づかないうちに移動が進行してしまっていた | `OVRManager.instance.isHmdPresent`と`OVRManager.hasVrFocus`の両方が揃うまで待機するコルーチンを実装。タイムアウトを設けて永久に固まらないようにしつつ、揃った後も追加の余裕時間（`autoStartDelaySeconds`）を設けてから自動移動を開始するようにした（#010） |
+| F1 | 自動移動が終着点を通過してしまう | 1フレームあたりの移動量が残り距離より大きい場合、目的地を追い越してしまっていた | 1フレームで進む距離を残り距離でクランプし（`Mathf.Min`）、到達判定時には座標を最終的にピッタリ目的地へ合わせる処理を追加 |
+| F2 | 終着点のY座標（高さ）が意図と異なる／落下する | 水平移動のみを制御し、高さは重力任せにしていたため、Character ControllerのCenter/Heightのオフセットとズレが生じていた | 開発初期はGround Raycastによる高さ自動補正を試みたが、ベイク済みモデルを扱う都合上「高さを固定したくない」という要望が出たため、最終的に**transform.positionでXYZ全軸を直接制御する方式**に統一。開始・終了地点のYがそのまま反映されるようにした |
+| F3 | 自動移動の開始直後・終了直後に「ストン」と落下する | `CharacterController.isGrounded`はMove()呼び出し後でないと正しく判定されず、最初の数フレームは強制的に`false`扱いになるため、重力が過剰に加算されていた | `Start()`内で一度だけ小さく下方向にMove()して`isGrounded`を正しく初期化する処理と、自動移動終了時に`verticalVelocity`をリセットする処理を追加 |
+| F4 | 自動移動終了後、その場から一切動けなくなる | transform.position直接制御は衝突判定を経由しないため、着地位置によってはCharacter Controllerのカプセルが地形にわずかにめり込むことがあり、次のMove()呼び出し時にめり込みが解消できず固まっていた | 到着直後に`Physics.OverlapCapsule`と`Physics.ComputePenetration`でめり込みを検出し、自動的に押し出す処理を追加。ただし通常の接地時に発生するSkin Width程度のごく僅かな重なりまで押し出すと逆に浮いてしまうため、**Skin Widthを超える明らかな異常なめり込みのみ**を対象にするよう調整 |
+| F5 | Quest実機で、実際にヘッドセットに映像が表示される前にキャラクターが動き出してしまう | `Start()`時点ではOVRのHMDトラッキング・VRフォーカスの確立前であり、その状態でCharacterController.Move()を呼ぶと、ユーザーが気づかないうちに移動が進行してしまっていた | `OVRManager.instance.isHmdPresent`と`OVRManager.hasVrFocus`の両方が揃うまで待機するコルーチンを実装。タイムアウトを設けて永久に固まらないようにしつつ、揃った後も追加の余裕時間（`autoStartDelaySeconds`）を設けてから自動移動を開始するようにした
 
 #### 憑依演出システム（`AnimalViewSwitch.cs`）
 
@@ -703,7 +703,7 @@ Hackit2026の3日間の開催期間（実質開発時間：約16.5時間）で�
 
 | アセット名 | 配布元 | URL | ライセンス |
 | --- | --- | --- | --- |
-| Skybox Series Free | Avionx | https://assetstore.unity.com/packages/2d/textures-materials/sky/skybox-series-free-103633 | a |
+| Skybox Series Free | Avionx | https://assetstore.unity.com/packages/2d/textures-materials/sky/skybox-series-free-103633 | 利用規約に基づき使用 |
 
 ### SDK・ライブラリ・ツール
 
@@ -802,7 +802,7 @@ Hackit2026の3日間の開催期間（実質開発時間：約16.5時間）で�
 
 ## 34. 今後の展望・拡張構想（Future Works）
 
-本プロジェクト「ZOOZOOM」は、今回のコア体験（サバンナ・エリアでの憑依・サバイバル）の実証を経て、プロダクトの価値をさらに高めるために以下の機能拡張を目指しています。
+本プロジェクト「ZOOZOOM」は、今回のコア体験（サバンナ・エリアでの憑依・サバイバル）の実証を経て、プロダクトの価値をさらに高めるために以下の機能拡張を目指す。
 
 ### 1. バイオームと登場動物の拡充
 - **新エリアの追加:** 深海の立体的な移動と浮力を体感する「オーシャン・エリア」、高低差のある密林での緊張感を味わう「ジャングル・エリア」、極寒の氷原でのサバイバルを体験する「アークティック・エリア」など、多様な環境を順次実装。
